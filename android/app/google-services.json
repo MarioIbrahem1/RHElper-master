@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "550973504959",
+    "project_id": "road-helper-fed8f",
+    "storage_bucket": "road-helper-fed8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:550973504959:android:1bac56bec771b3fb78350a",
+        "android_client_info": {
+          "package_name": "com.example.road_helperr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkVFjw0DdIBBto6L_gICNtOh12Hte-adI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
