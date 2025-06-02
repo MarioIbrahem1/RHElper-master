@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -7,6 +8,7 @@ import 'package:road_helperr/models/user_location.dart';
 import 'package:road_helperr/models/help_request.dart';
 import 'package:road_helperr/models/user_rating.dart';
 import 'package:road_helperr/services/auth_service.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
 
 class ApiService {
   static const String baseUrl = 'http://81.10.91.96:8132';
@@ -274,7 +276,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Error during registration process: $e');
+      debugPrint('Error during registration process: $e');
       if (e is http.ClientException) {
         return {
           'error':
@@ -293,8 +295,8 @@ class ApiService {
     }
 
     try {
-      print('Verifying OTP request to: $baseUrl/otp/verify');
-      print('Data being sent: email=$email, otp=$otp');
+      debugPrint('Verifying OTP request to: $baseUrl/otp/verify');
+      debugPrint('Data being sent: email=$email, otp=$otp');
 
       final response = await http.post(
         Uri.parse('$baseUrl/otp/verify'),
@@ -305,13 +307,13 @@ class ApiService {
         }),
       );
 
-      print('Response status code: ${response.statusCode}');
-      print('Response headers: ${response.headers}');
-      print('Response body: ${response.body}');
+      debugPrint('Response status code: ${response.statusCode}');
+      debugPrint('Response headers: ${response.headers}');
+      debugPrint('Response body: ${response.body}');
 
       try {
         final responseData = jsonDecode(response.body);
-        print('Decoded response: $responseData');
+        debugPrint('Decoded response: $responseData');
 
         if (response.statusCode == 200) {
           return {
@@ -326,20 +328,23 @@ class ApiService {
           };
         }
       } catch (e) {
-        print('Error decoding response: $e');
+        debugPrint('Error decoding response: $e');
         return {'error': 'تنسيق استجابة غير صالح من الخادم'};
       }
     } catch (e) {
-      print('Error in verifyOTP: $e');
+      debugPrint('Error in verifyOTP: $e');
       return {'error': 'حدث خطأ أثناء التحقق من الرمز: $e'};
     }
   }
 
+  // Check if email exists using the API endpoint
   static Future<Map<String, dynamic>> checkEmailExists(String email) async {
     try {
       // Check connectivity first
       if (!await _checkConnectivity()) {
-        print('No internet connection available');
+        debugPrint('=== فحص البريد الإلكتروني ===');
+        debugPrint('❌ لا يوجد اتصال بالإنترنت');
+        debugPrint('============================');
         return {
           'success': false,
           'exists': false,
@@ -347,77 +352,102 @@ class ApiService {
         };
       }
 
-      print('Checking email existence for: $email');
-      print('Sending request to: $baseUrl/api/check-email');
+      // تحضير بيانات الطلب
+      final Map<String, dynamic> requestData = {'email': email};
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/check-email'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({'email': email}),
-      );
+      // Send GET request with email in body (using http.Request for more control)
+      final request =
+          http.Request('GET', Uri.parse('$baseUrl/api/check-email'));
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['Accept'] = 'application/json';
+      request.body = jsonEncode(requestData);
 
-      print('Response status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         try {
           final data = jsonDecode(response.body);
-          print('Decoded response data: $data');
 
+          // Based on the Postman screenshot, we expect:
+          // {"status": "success", "message": "Email does not exist"} when email doesn't exist
+
+          if (data.containsKey('status')) {
+            // Get the message from the response
+            final message = data['message'] ?? '';
+            final status = data['status'];
+
+            // Exactly as shown in Postman:
+            // If status is "success" and message is "Email does not exist", email doesn't exist
+            if (status == 'success' && message == 'Email does not exist') {
+              return {
+                'success': true,
+                'exists': false,
+                'message': 'البريد الإلكتروني غير موجود في النظام',
+                'message_en': 'Email does not exist in the system',
+              };
+            }
+            // If status is not success or message indicates email exists
+            else {
+              return {
+                'success': true,
+                'exists': true,
+                'message': 'هذا البريد الإلكتروني مرتبط بحساب موجود بالفعل',
+                'message_en':
+                    'This email is already associated with an existing account',
+              };
+            }
+          }
+
+          // Fallback for other response formats
           return {
             'success': true,
-            'exists': data['exists'] ?? false,
-            'message': data['message'] ?? 'Email check completed',
+            'exists': false,
+            'message': 'تم التحقق من البريد الإلكتروني',
+            'message_en': 'Email check completed',
           };
         } catch (e) {
-          print('Error decoding response: $e');
           return {
             'success': false,
             'exists': false,
-            'message': 'Invalid response format from server',
+            'message': 'حدث خطأ أثناء تحليل استجابة الخادم',
+            'message_en': 'Invalid response format from server',
           };
         }
-      } else if (response.statusCode == 404) {
-        return {
-          'success': true,
-          'exists': false,
-          'message': 'This email is not registered in the system',
-        };
       } else {
-        print('Server returned error status: ${response.statusCode}');
         try {
           final errorData = jsonDecode(response.body);
           return {
             'success': false,
             'exists': false,
             'message':
+                errorData['message'] ?? 'فشل التحقق من وجود البريد الإلكتروني',
+            'message_en':
                 errorData['message'] ?? 'Failed to check email existence',
           };
         } catch (e) {
           return {
             'success': false,
             'exists': false,
-            'message':
-                'Failed to check email existence (Status: ${response.statusCode})',
+            'message': 'فشل التحقق من وجود البريد الإلكتروني',
+            'message_en': 'Failed to check email existence',
           };
         }
       }
     } catch (e) {
-      print('Error in checkEmailExists: $e');
       if (e is http.ClientException) {
         return {
           'success': false,
           'exists': false,
-          'message': 'Connection error: ${e.message}',
+          'message': 'خطأ في الاتصال بالخادم',
+          'message_en': 'Connection error',
         };
       }
       return {
         'success': false,
         'exists': false,
-        'message': 'An error occurred while checking email: $e',
+        'message': 'حدث خطأ أثناء التحقق من البريد الإلكتروني',
+        'message_en': 'An error occurred while checking email',
       };
     }
   }
@@ -432,8 +462,10 @@ class ApiService {
     }
 
     try {
-      print('Sending reset password request to: $baseUrl/api/reset-password');
-      print('Data being sent: {"email": "$email", "password": "$newPassword"}');
+      debugPrint(
+          'Sending reset password request to: $baseUrl/api/reset-password');
+      debugPrint(
+          'Data being sent: {"email": "$email", "password": "$newPassword"}');
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/reset-password'),
@@ -447,8 +479,8 @@ class ApiService {
         }),
       );
 
-      print('Response status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      debugPrint('Response status code: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -474,7 +506,7 @@ class ApiService {
         return {'error': errorMessage};
       }
     } catch (e) {
-      print('Error in resetPassword: $e');
+      debugPrint('Error in resetPassword: $e');
       if (e is http.ClientException) {
         return {
           'error':
@@ -808,6 +840,294 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Error fetching user average rating: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> registerGoogleUser(
+      Map<String, dynamic> userData) async {
+    if (!await _checkConnectivity()) {
+      return {
+        'success': false,
+        'error':
+            'لا يوجد اتصال بالإنترنت. يرجى التحقق من اتصالك والمحاولة مرة أخرى',
+      };
+    }
+
+    try {
+      debugPrint('Registering Google user with data: $userData');
+
+      // 1. إنشاء طلب متعدد الأجزاء (لرفع الملف)
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/SignUpGoogle'),
+      );
+
+      // 2. إضافة الحقول النصية (بنفس الأسماء كما في Postman)
+      request.fields['firstName'] = userData['firstName'] ?? '';
+      request.fields['lastName'] = userData['lastName'] ?? '';
+      request.fields['email'] = userData['email'] ?? '';
+      request.fields['phone'] = userData['phone'] ?? '';
+      request.fields['car_number'] =
+          userData['Car Number'] ?? ''; // مطلوب في Postman
+      request.fields['car_color'] =
+          userData['car_color'] ?? ''; // مطلوب في Postman
+      request.fields['car_model'] =
+          userData['car_model'] ?? ''; // مطلوب في Postman
+
+      // 3. رفع الصورة كملف (إذا كانت متوفرة)
+      if (userData['photoURL'] != null && userData['photoURL'].isNotEmpty) {
+        try {
+          // تنزيل الصورة من رابط Google
+          var imageResponse = await http.get(Uri.parse(userData['photoURL']));
+          if (imageResponse.statusCode == 200) {
+            // حفظ الصورة مؤقتًا
+            final tempDir = await path_provider.getTemporaryDirectory();
+            final filePath =
+                '${tempDir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            final file = File(filePath);
+            await file.writeAsBytes(imageResponse.bodyBytes);
+
+            // إضافة الملف إلى الطلب (باسم profile_picture كما في Postman)
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'profile_picture', // اسم الحقل في الخادم
+                file.path,
+              ),
+            );
+            debugPrint('تم إرفاق صورة البروفايل كملف');
+          }
+        } catch (e) {
+          debugPrint('فشل تحميل الصورة: $e');
+        }
+      }
+
+      // 4. إرسال الطلب
+      var response = await request.send();
+      var responseData = await response.stream.bytesToString();
+      var jsonResponse = json.decode(responseData);
+
+      debugPrint('Google registration response status: ${response.statusCode}');
+      debugPrint('Google registration response body: $responseData');
+
+      if (response.statusCode == 200) {
+        // حفظ بيانات المستخدم في الجلسة (إذا كان الخادم يُرجع token أو user data)
+        if (jsonResponse['data'] != null &&
+            jsonResponse['data']['user'] != null) {
+          final user = jsonResponse['data']['user'];
+          final authService = AuthService();
+          await authService.saveAuthData(
+            token: jsonResponse['token'] ?? '',
+            userId: user['id'].toString(),
+            email: user['email'] ?? '',
+            name: '${user['firstName'] ?? ''} ${user['lastName'] ?? ''}',
+          );
+        }
+
+        return {
+          'success': true,
+          'data': jsonResponse['data'],
+          'message': jsonResponse['message'] ?? 'تم التسجيل بنجاح',
+        };
+      } else {
+        return {
+          'success': false,
+          'error':
+              jsonResponse['message'] ?? 'فشل التسجيل (${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error during Google registration: $e');
+      return {
+        'success': false,
+        'error': 'حدث خطأ غير متوقع: ${e.toString()}',
+      };
+    }
+  }
+
+  // استرجاع بيانات المستخدم الذي قام بالتسجيل أو تسجيل الدخول باستخدام Google
+  static Future<Map<String, dynamic>> getGoogleUserData(String email) async {
+    if (!await _checkConnectivity()) {
+      return {
+        'success': false,
+        'error':
+            'لا يوجد اتصال بالإنترنت. يرجى التحقق من اتصالك والمحاولة مرة أخرى',
+      };
+    }
+
+    try {
+      debugPrint('Fetching Google user data for email: $email');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/datagoogle'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+        }),
+      );
+
+      debugPrint('Google user data response status: ${response.statusCode}');
+      debugPrint('Google user data response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        // التحقق من نجاح الاستجابة
+        if (responseData['status'] == 'success' &&
+            responseData['data'] != null) {
+          return {
+            'success': true,
+            'data': responseData['data'],
+          };
+        } else {
+          return {
+            'success': false,
+            'error':
+                responseData['message'] ?? 'لم يتم العثور على بيانات المستخدم',
+          };
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'error': errorData['message'] ??
+              'فشل استرجاع بيانات المستخدم (${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error fetching Google user data: $e');
+      if (e is http.ClientException) {
+        return {
+          'success': false,
+          'error':
+              'فشل الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى',
+        };
+      }
+      return {
+        'success': false,
+        'error':
+            'حدث خطأ غير متوقع أثناء استرجاع بيانات المستخدم: ${e.toString()}',
+      };
+    }
+  }
+
+  // تحديث بيانات المستخدم الذي قام بالتسجيل أو تسجيل الدخول باستخدام Google
+  static Future<Map<String, dynamic>> updateGoogleUser(
+      Map<String, dynamic> userData) async {
+    if (!await _checkConnectivity()) {
+      return {
+        'success': false,
+        'error':
+            'لا يوجد اتصال بالإنترنت. يرجى التحقق من اتصالك والمحاولة مرة أخرى',
+      };
+    }
+
+    try {
+      debugPrint('Updating Google user with data: $userData');
+
+      // إنشاء طلب متعدد الأجزاء (form-data) كما هو موضح في Postman
+      var request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('$baseUrl/api/updateusergoogle'),
+      );
+
+      // إضافة الحقول النصية (بنفس الأسماء كما في Postman)
+      if (userData['email'] != null) {
+        request.fields['email'] = userData['email'].toString();
+      }
+      if (userData['firstName'] != null) {
+        request.fields['firstName'] = userData['firstName'].toString();
+      }
+      if (userData['lastName'] != null) {
+        request.fields['lastName'] = userData['lastName'].toString();
+      }
+      if (userData['phone'] != null) {
+        request.fields['phone'] = userData['phone'].toString();
+      }
+      if (userData['car_number'] != null) {
+        request.fields['car_number'] = userData['car_number'].toString();
+      }
+      if (userData['car_color'] != null) {
+        request.fields['car_color'] = userData['car_color'].toString();
+      }
+      if (userData['car_model'] != null) {
+        request.fields['car_model'] = userData['car_model'].toString();
+      }
+
+      // رفع الصورة كملف (إذا كانت متوفرة)
+      if (userData['profile_picture'] != null &&
+          userData['profile_picture'] is File) {
+        try {
+          final file = userData['profile_picture'] as File;
+          if (await file.exists()) {
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'profile_picture', // اسم الحقل في الخادم
+                file.path,
+              ),
+            );
+            debugPrint('تم إرفاق صورة البروفايل كملف');
+          }
+        } catch (e) {
+          debugPrint('فشل إرفاق الصورة: $e');
+        }
+      }
+
+      debugPrint('=== UPDATE GOOGLE USER REQUEST ===');
+      debugPrint('URL: ${request.url}');
+      debugPrint('Method: ${request.method}');
+      debugPrint('Fields: ${request.fields}');
+      debugPrint('Files: ${request.files.map((f) => f.field).toList()}');
+      debugPrint('===================================');
+
+      // إرسال الطلب
+      var response = await request.send();
+      var responseData = await response.stream.bytesToString();
+
+      debugPrint('=== UPDATE GOOGLE USER RESPONSE ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: $responseData');
+      debugPrint('===================================');
+
+      if (response.statusCode == 200) {
+        try {
+          var jsonResponse = json.decode(responseData);
+
+          return {
+            'success': true,
+            'data': jsonResponse,
+            'message': jsonResponse['message'] ?? 'تم تحديث البيانات بنجاح',
+          };
+        } catch (e) {
+          // إذا لم يكن الرد JSON، نعتبر العملية ناجحة إذا كان status code 200
+          return {
+            'success': true,
+            'message': 'تم تحديث البيانات بنجاح',
+          };
+        }
+      } else {
+        try {
+          var jsonResponse = json.decode(responseData);
+          return {
+            'success': false,
+            'error': jsonResponse['message'] ??
+                'فشل تحديث البيانات (${response.statusCode})',
+          };
+        } catch (e) {
+          return {
+            'success': false,
+            'error': 'فشل تحديث البيانات (${response.statusCode})',
+          };
+        }
+      }
+    } catch (e) {
+      debugPrint('Error during Google user update: $e');
+      return {
+        'success': false,
+        'error': 'حدث خطأ غير متوقع: ${e.toString()}',
+      };
     }
   }
 }

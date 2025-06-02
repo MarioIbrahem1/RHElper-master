@@ -12,7 +12,20 @@
           "package_name": "com.example.road_helperr"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "550973504959-b6b5c4c2fej4dn6atlb5arg7ps51kt7m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.road_helperr",
+            "certificate_hash": "85591175b66d2c0e127ff8dfc951e60ac369b7ae"
+          }
+        },
+        {
+          "client_id": "550973504959-5iq8mrvt5lgge6qsmq0ce5qkiui0a9et.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDkVFjw0DdIBBto6L_gICNtOh12Hte-adI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "550973504959-5iq8mrvt5lgge6qsmq0ce5qkiui0a9et.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "550973504959-aqreg4m1vcqql7d9ie38os3o09dln190.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.roadHelperr"
+              }
+            }
+          ]
         }
       }
     }

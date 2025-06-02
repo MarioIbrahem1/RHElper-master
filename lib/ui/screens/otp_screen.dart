@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:road_helperr/ui/screens/bottomnavigationbar_screes/home_screen.dart';
 import 'package:road_helperr/ui/screens/otp_expired_screen.dart';
 import 'package:road_helperr/utils/app_colors.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class OtpScreen extends StatefulWidget {
   static const String routeName = "otpscreen";
@@ -162,8 +163,10 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Widget _buildVerificationText(Color textColor) {
+    final lang = AppLocalizations.of(context);
     return Text(
-      "We have sent a verification\ncode to the email\n\"A**@gmail.com\"",
+      lang?.otpVerificationText ??
+          "We have sent a verification code to your email",
       style: TextStyle(
         fontSize: MediaQuery.of(context).size.width * 0.04,
         fontWeight: FontWeight.w500,
@@ -230,31 +233,52 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Widget _buildButtons(Color buttonColor) {
+    final lang = AppLocalizations.of(context);
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: buttonColor,
         minimumSize: const Size(double.infinity, 50),
       ),
-      onPressed: () {
+      onPressed: () async {
         bool isOtpComplete = controllers.values
             .every((controller) => controller.text.isNotEmpty);
 
         if (isOtpComplete) {
+          // Collect OTP from all fields - commented out until we can use it
+          // String otp = controllers.values.map((controller) => controller.text).join('');
+
+          // Get email from context or pass it as parameter to this screen
+          // For now, we'll show an error since we need the email to verify OTP
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  "This screen needs to be updated to include email parameter for OTP verification",
+                  textAlign: TextAlign.center),
+              backgroundColor: Colors.red,
+            ),
+          );
+
+          // Note: This screen should be updated to include:
+          // 1. Email parameter passed to this screen
+          // 2. Actual OTP verification using ApiService.verifyOTP(email, otp)
+          // 3. Proper error handling
+
           _timer.cancel();
           Navigator.pushNamed(context, HomeScreen.routeName);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("All fields must be filled out ",
+            SnackBar(
+              content: Text(
+                  lang?.otpAllFieldsRequired ?? "All fields must be filled out",
                   textAlign: TextAlign.center),
               backgroundColor: Colors.grey,
             ),
           );
         }
       },
-      child: const Text(
-        "Verify",
-        style: TextStyle(fontSize: 18, color: Colors.white),
+      child: Text(
+        lang?.verify ?? "Verify",
+        style: const TextStyle(fontSize: 18, color: Colors.white),
       ),
     );
   }

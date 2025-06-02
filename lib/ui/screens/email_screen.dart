@@ -59,7 +59,7 @@ class _EmailScreenState extends State<EmailScreen>
     if (_emailController.text.isEmpty) {
       NotificationService.showError(
         context: context,
-        title: 'Error',
+        title: lang.error,
         message: lang.pleaseEnterYourEmail,
       );
       return;
@@ -68,7 +68,7 @@ class _EmailScreenState extends State<EmailScreen>
     if (!_isValidEmail(_emailController.text)) {
       NotificationService.showError(
         context: context,
-        title: 'Error',
+        title: lang.error,
         message: lang.pleaseEnterAValidEmail,
       );
       return;
@@ -83,11 +83,11 @@ class _EmailScreenState extends State<EmailScreen>
 
       if (response['success']) {
         if (mounted) {
+          final lang = AppLocalizations.of(context)!;
           NotificationService.showSuccess(
             context: context,
-            title: 'OTP Sent',
-            message:
-                'OTP has been sent to your email: ${_emailController.text}',
+            title: lang.otpSent,
+            message: lang.otpSentToEmail,
           );
           Navigator.push(
             context,
@@ -100,19 +100,21 @@ class _EmailScreenState extends State<EmailScreen>
         }
       } else {
         if (mounted) {
+          final lang = AppLocalizations.of(context)!;
           NotificationService.showError(
             context: context,
-            title: 'Email Not Found',
-            message: response['error'] ?? 'Failed to send OTP',
+            title: lang.error,
+            message: response['error'] ?? lang.serverError,
           );
         }
       }
     } catch (e) {
       if (mounted) {
+        final lang = AppLocalizations.of(context)!;
         NotificationService.showError(
           context: context,
-          title: 'Error',
-          message: 'An error occurred while processing your request',
+          title: lang.error,
+          message: lang.networkError,
         );
       }
     } finally {

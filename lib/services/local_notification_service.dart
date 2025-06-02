@@ -5,65 +5,72 @@ import 'package:road_helperr/services/update_service.dart';
 
 class LocalNotificationService {
   // Singleton instance
-  static final LocalNotificationService _instance = LocalNotificationService._internal();
+  static final LocalNotificationService _instance =
+      LocalNotificationService._internal();
   factory LocalNotificationService() => _instance;
-  
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = 
+
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
-  
+
   LocalNotificationService._internal();
-  
-  // تهيئة خدمة الإشعارات
+
+  // Initialize notification service
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    const InitializationSettings initializationSettings = InitializationSettings(
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
     );
-    
+
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
   }
-  
-  // معالجة النقر على الإشعار
+
+  // Handle notification tap
   void _onNotificationTapped(NotificationResponse response) {
     if (response.payload == 'update_available') {
-      // سيتم التعامل مع هذا في الشاشة الرئيسية
+      // This will be handled in the home screen
     }
   }
-  
-  // إرسال إشعار بتوفر تحديث جديد
+
+  // Send notification for available update
   Future<void> showUpdateNotification(UpdateInfo updateInfo) async {
+    // Default notification title and body
+    String title = 'Update Available';
+    String body =
+        'Version ${updateInfo.version} is now available. Tap to update.';
+
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
       'update_channel',
-      'تحديثات التطبيق',
-      channelDescription: 'إشعارات بتوفر تحديثات جديدة للتطبيق',
+      'App Updates',
+      channelDescription: 'Notifications for new app updates',
       importance: Importance.high,
       priority: Priority.high,
     );
-    
+
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
-    
+
     await _flutterLocalNotificationsPlugin.show(
       0,
-      'تحديث جديد متاح',
-      'الإصدار ${updateInfo.version} متاح الآن. انقر للتحديث.',
+      title,
+      body,
       platformChannelSpecifics,
       payload: 'update_available',
     );
   }
-  
-  // التحقق من وجود تحديثات وإرسال إشعار إذا كان هناك تحديث جديد
+
+  // Check for updates and send notification if there is a new update
   Future<void> checkForUpdateAndNotify() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final bool updateAvailable = prefs.getBool('update_available') ?? false;
-      
+
       if (updateAvailable) {
         final UpdateInfo? updateInfo = await UpdateService().getUpdateInfo();
         if (updateInfo != null) {
@@ -71,7 +78,7 @@ class LocalNotificationService {
         }
       }
     } catch (e) {
-      debugPrint('خطأ في التحقق من التحديثات وإرسال الإشعارات: $e');
+      debugPrint('Error checking for updates and sending notifications: $e');
     }
   }
 }

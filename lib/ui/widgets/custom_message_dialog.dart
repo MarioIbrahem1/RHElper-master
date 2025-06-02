@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:road_helperr/utils/message_utils.dart';
 
 class CustomMessageDialog extends StatelessWidget {
   final String title;
@@ -44,15 +46,21 @@ class CustomMessageDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lang = AppLocalizations.of(context);
+    final errorColor = MessageUtils.getErrorColor(context);
+    final successColor = MessageUtils.getSuccessColor(context);
+    final backgroundColor = MessageUtils.getDialogBackgroundColor(context);
+    final textColor = MessageUtils.getTextColor(context);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isError ? Colors.red : Colors.green,
+            color: isError ? errorColor : successColor,
             width: 2,
           ),
         ),
@@ -61,7 +69,7 @@ class CustomMessageDialog extends StatelessWidget {
           children: [
             Icon(
               isError ? Icons.error_outline : Icons.check_circle_outline,
-              color: isError ? Colors.red : Colors.green,
+              color: isError ? errorColor : successColor,
               size: 50,
             ),
             const SizedBox(height: 20),
@@ -70,16 +78,16 @@ class CustomMessageDialog extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: isError ? Colors.red : Colors.green,
+                color: isError ? errorColor : successColor,
               ),
             ),
             const SizedBox(height: 10),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color: Colors.black87,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 20),
@@ -92,7 +100,7 @@ class CustomMessageDialog extends StatelessWidget {
                     onConfirm?.call();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isError ? Colors.red : Colors.green,
+                    backgroundColor: isError ? errorColor : successColor,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 30, vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -100,7 +108,10 @@ class CustomMessageDialog extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    confirmButtonText ?? (isError ? 'Try Again' : 'Continue'),
+                    confirmButtonText ??
+                        (isError
+                            ? (lang?.tryAgain ?? 'Try Again')
+                            : (lang?.continueText ?? 'Continue')),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,

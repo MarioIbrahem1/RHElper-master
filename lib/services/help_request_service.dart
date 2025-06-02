@@ -5,6 +5,7 @@ import 'package:road_helperr/models/notification_model.dart';
 import 'package:road_helperr/services/api_service.dart';
 import 'package:road_helperr/services/notification_manager.dart';
 import 'package:road_helperr/ui/widgets/help_request_dialog.dart';
+// import 'package:road_helperr/utils/message_utils.dart';
 
 class HelpRequestService {
   static final HelpRequestService _instance = HelpRequestService._internal();
@@ -69,18 +70,10 @@ class HelpRequestService {
     // Log the notification
     debugPrint('New help request from ${request.senderName}');
 
-    // تحويل طلب المساعدة إلى إشعار
-    final notification = NotificationModel(
-      id: request.requestId,
-      title: 'طلب مساعدة',
-      body: 'تلقيت طلب مساعدة من ${request.senderName}',
-      type: 'help_request',
-      timestamp: request.timestamp,
-      data: request.toJson(),
-      isRead: false,
-    );
+    // Convert help request to notification using the fromHelpRequest method
+    final notification = NotificationModel.fromHelpRequest(request.toJson());
 
-    // حفظ الإشعار في مدير الإشعارات
+    // Save notification to notification manager
     await _notificationManager.addNotification(notification);
   }
 

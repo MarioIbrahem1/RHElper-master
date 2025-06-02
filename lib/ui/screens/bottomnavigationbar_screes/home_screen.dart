@@ -27,7 +27,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // static const int _selectedIndex = 0; // تم إزالته لأنه غير مستخدم
   int pressCount = 0;
-  Set<Marker> _markers = <Marker>{};
 
   final Map<String, bool> serviceStates = {
     TextStrings.homeGas: false,
@@ -70,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       serviceStates[key] = value;
     });
-    print("Filter changed: $key -> $value");
+    debugPrint("Filter changed: $key -> $value");
   }
 
   Future<void> getFilteredServices() async {
@@ -80,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .map((entry) => entry.key)
         .toList();
 
-    print("Selected filters: $selectedKeys");
+    debugPrint("Selected filters: $selectedKeys");
 
     if (selectedKeys.isEmpty) {
       NotificationService.showValidationError(
@@ -95,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .map((key) => PlacesService.getPlaceTypeAndKeyword(key))
         .toList();
 
-    print('🔍 Selected filters with keywords: $selectedFilters');
+    debugPrint('🔍 Selected filters with keywords: $selectedFilters');
 
     // الحصول على الموقع الحالي الفعلي
     try {
@@ -108,13 +107,13 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         currentLatitude = position.latitude;
         currentLongitude = position.longitude;
-        print(
+        debugPrint(
             '📍 Current location updated: $currentLatitude, $currentLongitude');
       });
 
       // تحديث عنوان الموقع (يمكن إضافة هذه الوظيفة لاحقًا إذا لزم الأمر)
     } catch (e) {
-      print('❌ Error getting current location: $e');
+      debugPrint('❌ Error getting current location: $e');
       if (currentLatitude == null || currentLongitude == null) {
         if (mounted) {
           NotificationService.showValidationError(
@@ -136,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final type = filter['type'] as String;
       final keyword = filter['keyword'] as String;
 
-      print('🔍 Fetching places for type: $type, keyword: $keyword');
+      debugPrint('🔍 Fetching places for type: $type, keyword: $keyword');
 
       try {
         // استخدام الميزات الجديدة في PlacesService
@@ -149,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
           fetchAllPages: true, // الحصول على جميع الصفحات
         );
 
-        print(
+        debugPrint(
             '✅ Found ${places.length} places for type: $type, keyword: $keyword');
 
         // إضافة العلامات للنتائج
@@ -175,21 +174,21 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             );
           } catch (e) {
-            print('Error processing place: $e');
+            debugPrint('Error processing place: $e');
             continue;
           }
         }
       } catch (e) {
-        print('Error fetching places for type $type: $e');
+        debugPrint('Error fetching places for type $type: $e');
       }
     }
 
-    print('📊 Total markers: ${allMarkers.length}');
+    debugPrint('📊 Total markers: ${allMarkers.length}');
 
-    // تحديث العلامات على الخريطة
-    setState(() {
-      _markers = allMarkers;
-    });
+    // يمكن استخدام العلامات هنا إذا لزم الأمر
+    // setState(() {
+    //   // تحديث العلامات على الخريطة
+    // });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -218,8 +217,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showWarningDialog(BuildContext context) {
-    final lang = AppLocalizations.of(context);
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -228,13 +225,12 @@ class _HomeScreenState extends State<HomeScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: Text(lang.warning ?? 'Warning'),
-          content: Text(lang.pleaseSelectBetween1To3Services ??
-              'Please select between 1 to 3 services.'),
+          title: Text(lang.warning),
+          content: Text(lang.pleaseSelectBetween1To3Services),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(lang.ok ?? 'OK'),
+              child: Text(lang.ok),
             ),
           ],
         );
@@ -288,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         Navigator.pushNamed(
-          context,
+          this.context,
           MapScreen.routeName,
           arguments: {
             'filters': activeFilters,
@@ -299,23 +295,28 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       // في حالة فشل الحصول على الموقع الحالي
-      if (currentLatitude != null && currentLongitude != null && mounted) {
-        // استخدام آخر موقع معروف إذا كان متاحًا
-        Navigator.pushNamed(
-          context,
-          MapScreen.routeName,
-          arguments: {
-            'filters': activeFilters,
-            'latitude': currentLatitude,
-            'longitude': currentLongitude,
-          },
-        );
-      } else if (mounted) {
-        final lang = AppLocalizations.of(context);
-        NotificationService.showValidationError(
-          context,
-          lang?.fetchingLocation ?? 'Location not available. Please try again.',
-        );
+      if (currentLatitude != null && currentLongitude != null) {
+        if (mounted) {
+          // استخدام آخر موقع معروف إذا كان متاحًا
+          Navigator.pushNamed(
+            this.context,
+            MapScreen.routeName,
+            arguments: {
+              'filters': activeFilters,
+              'latitude': currentLatitude,
+              'longitude': currentLongitude,
+            },
+          );
+        }
+      } else {
+        if (mounted) {
+          final lang = AppLocalizations.of(this.context);
+          NotificationService.showValidationError(
+            this.context,
+            lang?.fetchingLocation ??
+                'Location not available. Please try again.',
+          );
+        }
       }
     }
   }
@@ -582,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: serviceStates.entries.map((entry) {
         return ServiceCard(
           title: entry.key,
-          icon: getServiceIcon(entry.key),
+          iconPath: getServiceIconPath(entry.key),
           isSelected: entry.value,
           iconSize: iconSize,
           fontSize: titleSize * 0.8,
@@ -695,28 +696,28 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 0),
       child: CurvedNavigationBar(
-      backgroundColor: Theme.of(context).brightness == Brightness.light
-          ? Colors.white
-          : const Color(0xFF01122A),
-      color: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF1F3551)
-          : const Color(0xFF023A87),
-      buttonBackgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF1F3551)
-          : const Color(0xFF023A87),
-      animationDuration: const Duration(milliseconds: 300),
-      height: 45,
-      index: 0,
-      letIndexChange: (index) => true,
-      items: const [
-        Icon(Icons.home_outlined, size: 18, color: Colors.white),
-        Icon(Icons.location_on_outlined, size: 18, color: Colors.white),
-        Icon(Icons.textsms_outlined, size: 18, color: Colors.white),
-        Icon(Icons.notifications_outlined, size: 18, color: Colors.white),
-        Icon(Icons.person_2_outlined, size: 18, color: Colors.white),
-      ],
-      onTap: (index) => _handleNavigation(context, index),
-    ),
+        backgroundColor: Theme.of(context).brightness == Brightness.light
+            ? Colors.white
+            : const Color(0xFF01122A),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1F3551)
+            : const Color(0xFF023A87),
+        buttonBackgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1F3551)
+            : const Color(0xFF023A87),
+        animationDuration: const Duration(milliseconds: 300),
+        height: 45,
+        index: 0,
+        letIndexChange: (index) => true,
+        items: const [
+          Icon(Icons.home_outlined, size: 18, color: Colors.white),
+          Icon(Icons.location_on_outlined, size: 18, color: Colors.white),
+          Icon(Icons.textsms_outlined, size: 18, color: Colors.white),
+          Icon(Icons.notifications_outlined, size: 18, color: Colors.white),
+          Icon(Icons.person_2_outlined, size: 18, color: Colors.white),
+        ],
+        onTap: (index) => _handleNavigation(context, index),
+      ),
     );
   }
 
@@ -733,33 +734,29 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  IconData getServiceIcon(String title) {
-    final platform = Theme.of(context).platform;
-    final isIOS =
-        platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
-
+  String getServiceIconPath(String title) {
     switch (title) {
       case TextStrings.homeGas:
-        return isIOS ? CupertinoIcons.gauge : Icons.local_gas_station;
+        return 'assets/home_icon/gas_station.png';
       case TextStrings.homePolice:
-        return isIOS ? CupertinoIcons.shield_fill : Icons.local_police;
+        return 'assets/home_icon/Police.png';
       case TextStrings.homeFire:
-        return isIOS ? CupertinoIcons.flame_fill : Icons.fire_truck;
+        return 'assets/home_icon/Fire_extinguisher.png';
       case TextStrings.homeHospital:
-        return isIOS ? CupertinoIcons.heart_fill : Icons.local_hospital;
+        return 'assets/home_icon/Hospital.png';
       case TextStrings.homeMaintenance:
-        return isIOS ? CupertinoIcons.wrench_fill : Icons.build;
+        return 'assets/home_icon/Maintenance_center.png';
       case TextStrings.homeWinch:
-        return isIOS ? CupertinoIcons.car_fill : Icons.car_repair;
+        return 'assets/home_icon/Winch.png';
       default:
-        return isIOS ? CupertinoIcons.question : Icons.help;
+        return 'assets/home_icon/gas_station.png'; // fallback
     }
   }
 }
 
 class ServiceCard extends StatelessWidget {
   final String title;
-  final IconData icon;
+  final String iconPath;
   final bool isSelected;
   final ValueChanged<bool> onToggle;
   final double iconSize;
@@ -768,7 +765,7 @@ class ServiceCard extends StatelessWidget {
   const ServiceCard({
     super.key,
     required this.title,
-    required this.icon,
+    required this.iconPath,
     required this.isSelected,
     required this.onToggle,
     required this.iconSize,
@@ -889,12 +886,27 @@ class ServiceCard extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        icon,
-                        size: iconSize,
-                        color: isSelected
-                            ? Colors.white
-                            : AppColors.getTextStackColor(context),
+                      Image.asset(
+                        iconPath,
+                        width: iconSize,
+                        height: iconSize,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Error loading icon: $iconPath - $error');
+                          return Container(
+                            width: iconSize,
+                            height: iconSize,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey,
+                              size: iconSize * 0.6,
+                            ),
+                          );
+                        },
                       ),
                       SizedBox(height: padding / 2),
                       Text(

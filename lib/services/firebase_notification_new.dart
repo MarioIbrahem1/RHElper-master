@@ -1,10 +1,12 @@
 import 'package:road_helperr/ui/screens/bottomnavigationbar_screes/notification_screen.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+// import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:road_helperr/models/notification_model.dart';
 import 'package:road_helperr/services/notification_manager.dart';
+import 'package:road_helperr/utils/message_utils.dart';
 
-// تعريف مفتاح التنقل العام للتطبيق
+// Global navigation key for the application
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class FirebaseNotification {
@@ -13,85 +15,92 @@ class FirebaseNotification {
 
   Future<void> initNotification() async {
     try {
-      // تهيئة FirebaseMessaging
+      // Initialize FirebaseMessaging
       _firebaseMessaging = FirebaseMessaging.instance;
 
-      // طلب إذن الإشعارات
+      // Request notification permissions
       await _firebaseMessaging.requestPermission();
       String? token = await _firebaseMessaging.getToken();
-      // استخدام debugPrint بدلاً من print للتسجيل في وضع التطوير فقط
+      // Use debugPrint instead of print for logging in development mode only
       debugPrint("FCM Token: $token");
 
-      // إعداد معالجة الإشعارات في الخلفية
+      // Set up background notification handling
       await handleBackGroundNotification();
 
-      // إعداد معالجة الإشعارات عندما يكون التطبيق في المقدمة
+      // Set up foreground notification handling
       await handleForegroundNotification();
     } catch (e) {
-      debugPrint("خطأ في تهيئة الإشعارات: $e");
+      debugPrint("Error initializing notifications: $e");
     }
   }
 
-  // معالجة الإشعارات عندما يكون التطبيق في المقدمة
+  // Handle notifications when the app is in the foreground
   Future<void> handleForegroundNotification() async {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // تحويل الإشعار إلى نموذج بيانات
+      // Convert the notification to a data model
       final notification = _createNotificationFromMessage(message);
 
-      // حفظ الإشعار في قاعدة البيانات المحلية
+      // Save the notification in the local database
       _notificationManager.addNotification(notification);
     });
   }
 
-  // معالجة الإشعارات عندما يتم النقر عليها
+  // Handle notifications when they are clicked
   void handleMessage(RemoteMessage? message) async {
     if (message == null) return;
 
-    // تحويل الإشعار إلى نموذج بيانات
+    // Convert the notification to a data model
     final notification = _createNotificationFromMessage(message);
 
-    // حفظ الإشعار في قاعدة البيانات المحلية إذا لم يكن موجوداً
+    // Save the notification in the local database if it doesn't exist
     await _notificationManager.addNotification(notification);
 
-    // تعليم الإشعار كمقروء
+    // Mark the notification as read
     await _notificationManager.markAsRead(notification.id);
 
-    // فتح شاشة الإشعارات
+    // Open the notifications screen
     navigatorKey.currentState!.pushNamed(NotificationScreen.routeName);
   }
 
-  // إعداد معالجة الإشعارات في الخلفية
+  // Set up background notification handling
   Future<void> handleBackGroundNotification() async {
     try {
-      // معالجة الإشعارات عند فتح التطبيق من خلال الإشعار
+      // Handle notifications when opening the app through a notification
       FirebaseMessaging.instance.getInitialMessage().then(handleMessage);
 
-      // معالجة الإشعارات عندما يكون التطبيق في الخلفية
+      // Handle notifications when the app is in the background
       FirebaseMessaging.onMessageOpenedApp.listen(handleMessage);
     } catch (e) {
-      debugPrint("خطأ في إعداد معالجة الإشعارات: $e");
+      debugPrint("Error setting up notification handling: $e");
     }
   }
 
-  // تحويل رسالة Firebase إلى نموذج بيانات الإشعار
+  // Convert Firebase message to notification model
   NotificationModel _createNotificationFromMessage(RemoteMessage message) {
     final data = message.data;
     final notification = message.notification;
+    final BuildContext? context = navigatorKey.currentContext;
 
-    // تحديد نوع الإشعار
+    // Determine notification type
     String type = 'other';
     if (data.containsKey('type')) {
       type = data['type'] as String;
     }
 
-    // إنشاء معرف فريد للإشعار
+    // Create unique ID for notification
     final String id =
         message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString();
 
-    // إنشاء نموذج بيانات الإشعار
+    // Get default title based on context if available
+    String defaultTitle = 'New Notification';
+    if (context != null) {
+      defaultTitle = MessageUtils.getNewNotificationTitle(context);
+    }
+
+    // Create notification model
     return NotificationModel(
       id: id,
-      title: notification?.title ?? 'إشعار جديد',
+      title: notification?.title ?? defaultTitle,
       body: notification?.body ?? '',
       type: type,
       timestamp: DateTime.now(),

@@ -77,19 +77,26 @@ class _OtpScreenState extends State<Otp> with SingleTickerProviderStateMixin {
           _isResendEnabled = false;
         });
         _startTimer();
-        NotificationService.showSuccess(
-          context: context,
-          title: 'OTP Sent',
-          message: 'OTP has been sent to your email',
-        );
+        if (mounted) {
+          final lang = AppLocalizations.of(context)!;
+          NotificationService.showSuccess(
+            context: context,
+            title: lang.otpSent,
+            message: lang.otpSentToEmail,
+          );
+        }
       } else {
-        NotificationService.showGenericError(
-          context,
-          response['error'] ?? 'Failed to send OTP',
-        );
+        if (mounted) {
+          NotificationService.showGenericError(
+            context,
+            response['error'] ?? 'Failed to send OTP',
+          );
+        }
       }
     } catch (e) {
-      NotificationService.showNetworkError(context);
+      if (mounted) {
+        NotificationService.showNetworkError(context);
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -98,10 +105,11 @@ class _OtpScreenState extends State<Otp> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _verifyOTP() async {
+    final lang = AppLocalizations.of(context)!;
     if (_otpController.text.length != 6) {
       NotificationService.showValidationError(
         context,
-        'Please enter a 6-digit OTP code',
+        lang.otpAllFieldsRequired,
       );
       return;
     }
@@ -111,10 +119,18 @@ class _OtpScreenState extends State<Otp> with SingleTickerProviderStateMixin {
     });
 
     try {
-      // For testing purposes, always succeed
-      if (true) {
-        if (!mounted) return;
+      // Call the API to verify the OTP
+      final verifyResult = await ApiService.verifyOTP(
+        widget.email,
+        _otpController.text,
+      );
 
+      if (!mounted) return;
+
+      // Check if verification was successful
+      if (verifyResult.containsKey('success') &&
+          verifyResult['success'] == true) {
+        // OTP verification successful
         if (widget.registrationData != null) {
           // Registration Flow
           NotificationService.showRegistrationSuccess(
@@ -138,63 +154,12 @@ class _OtpScreenState extends State<Otp> with SingleTickerProviderStateMixin {
             ),
           );
         }
-        return;
-      }
-
-      if (widget.registrationData != null) {
-        // Registration Flow
-        final registerResponse = await ApiService.register(
-          widget.registrationData!,
-          _otpController.text,
-        );
-
-        if (registerResponse['success'] == true) {
-          if (!mounted) return;
-
-          NotificationService.showRegistrationSuccess(
-            context,
-            onConfirm: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-                (route) => false,
-              );
-            },
-          );
-        } else {
-          if (!mounted) return;
-
-          NotificationService.showGenericError(
-            context,
-            registerResponse['error'] ?? 'Failed to complete registration',
-          );
-        }
       } else {
-        // Password Reset Flow
-        final response = await ApiService.verifyOTP(
-          widget.email,
-          _otpController.text,
+        // OTP verification failed
+        NotificationService.showGenericError(
+          context,
+          verifyResult['error'] ?? lang.errorInVerification,
         );
-
-        if (response['success'] == true) {
-          if (!mounted) return;
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => NewPasswordScreen(
-                email: widget.email,
-              ),
-            ),
-          );
-        } else {
-          if (!mounted) return;
-
-          NotificationService.showGenericError(
-            context,
-            response['error'] ?? 'Invalid OTP code',
-          );
-        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -288,19 +253,31 @@ class _OtpScreenState extends State<Otp> with SingleTickerProviderStateMixin {
                             borderRadius: BorderRadius.circular(10),
                             fieldHeight: 50,
                             fieldWidth: 40,
-                            activeFillColor: isLight ? Colors.grey[200] : const Color(0xFF1F3551),
-                            inactiveFillColor: isLight ? Colors.grey[200] : const Color(0xFF1F3551),
-                            selectedFillColor: isLight ? Colors.grey[200] : const Color(0xFF1F3551),
-                            activeColor: isLight ? AppColors.getSignAndRegister(context) : Colors.white,
-                            inactiveColor: isLight ? AppColors.getSignAndRegister(context) : Colors.white,
-                            selectedColor: isLight ? AppColors.getSignAndRegister(context) : Colors.white,
+                            activeFillColor: isLight
+                                ? Colors.grey[200]
+                                : const Color(0xFF1F3551),
+                            inactiveFillColor: isLight
+                                ? Colors.grey[200]
+                                : const Color(0xFF1F3551),
+                            selectedFillColor: isLight
+                                ? Colors.grey[200]
+                                : const Color(0xFF1F3551),
+                            activeColor: isLight
+                                ? AppColors.getSignAndRegister(context)
+                                : Colors.white,
+                            inactiveColor: isLight
+                                ? AppColors.getSignAndRegister(context)
+                                : Colors.white,
+                            selectedColor: isLight
+                                ? AppColors.getSignAndRegister(context)
+                                : Colors.white,
                           ),
                           enableActiveFill: true,
                         ),
                       ),
                       const SizedBox(height: 25),
                       Text(
-                        'Resend in $_timeLeft seconds',
+                        lang.resendInSecondsSec(_timeLeft),
                         style: TextStyle(
                           color: textColor.withOpacity(0.7),
                           fontSize: 14,
@@ -320,7 +297,8 @@ class _OtpScreenState extends State<Otp> with SingleTickerProviderStateMixin {
                                 onPressed: _verifyOTP,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF023A87),
-                                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 50, vertical: 15),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -339,7 +317,7 @@ class _OtpScreenState extends State<Otp> with SingleTickerProviderStateMixin {
                             TextButton(
                               onPressed: _isResendEnabled ? _resendOTP : null,
                               child: Text(
-                                'Resend Code',
+                                lang.resendCode,
                                 style: TextStyle(
                                   color: _isResendEnabled
                                       ? AppColors.getSignAndRegister(context)

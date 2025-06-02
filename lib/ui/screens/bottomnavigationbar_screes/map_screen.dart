@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:road_helperr/models/user_location.dart';
-import 'package:road_helperr/services/help_request_service.dart';
+import 'package:road_helperr/services/hybrid_help_request_service.dart';
 import 'package:road_helperr/ui/screens/bottomnavigationbar_screes/profile_screen.dart';
 import 'package:road_helperr/ui/widgets/user_details_bottom_sheet.dart';
 import '../../../utils/app_colors.dart';
@@ -574,7 +574,7 @@ class MapScreenState extends State<MapScreen> {
     _mapController.setMapController(controller);
 
     // Initialize help request service
-    HelpRequestService().initialize();
+    HybridHelpRequestService();
   }
 
   // Show user details bottom sheet

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:road_helperr/providers/settings_provider.dart';
 import 'package:road_helperr/providers/signup_provider.dart';
 import 'package:road_helperr/services/auth_service.dart';
+import 'package:road_helperr/services/hybrid_service_manager.dart';
 import 'package:road_helperr/ui/screens/about_screen.dart';
 import 'package:road_helperr/ui/screens/ai_chat.dart';
 import 'package:road_helperr/ui/screens/ai_welcome_screen.dart';
@@ -19,9 +20,11 @@ import 'package:road_helperr/ui/screens/otp_expired_screen.dart';
 import 'package:road_helperr/ui/screens/otp_screen.dart';
 import 'package:road_helperr/ui/screens/signin_screen.dart';
 import 'package:road_helperr/ui/screens/signupScreen.dart';
-import 'package:road_helperr/ui/screens/emergency_contacts.dart';
+
+import 'package:road_helperr/ui/screens/license_capture_screen.dart';
 import 'package:road_helperr/models/profile_data.dart';
 import 'package:road_helperr/utils/theme_provider.dart';
+import 'package:road_helperr/ui/screens/car_google.dart';
 import 'utils/location_service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'firebase_options.dart';
@@ -37,6 +40,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // تهيئة النظام الهجين الجديد
+  await HybridServiceManager().initialize();
 
   // التحقق من حالة تسجيل الدخول قبل بدء التطبيق
   final authService = AuthService();
@@ -177,10 +183,13 @@ class _MyAppState extends State<MyApp> {
         OnBoarding.routeName: (context) => const OnBoarding(),
         OnboardingScreen.routeName: (context) => const OnboardingScreen(),
         OtpExpiredScreen.routeName: (context) => const OtpExpiredScreen(),
-        // 'carGoogle': (context) => const CarGoogleScreen(
-        //   registrationData: {},
-        // ),
-
+        CarGoogleScreen.routeName: (context) {
+          final args = ModalRoute.of(context)!.settings.arguments
+              as Map<String, dynamic>?;
+          return CarGoogleScreen(
+            userData: args ?? {},
+          );
+        },
         EditProfileScreen.routeName: (context) {
           final args = ModalRoute.of(context)!.settings.arguments
               as Map<String, dynamic>;
@@ -190,8 +199,8 @@ class _MyAppState extends State<MyApp> {
           );
         },
         EmailScreen.routeName: (context) => const EmailScreen(),
-        EmergencyContactsScreen.routeName: (context) =>
-            const EmergencyContactsScreen(),
+        LicenseCaptureScreen.routeName: (context) =>
+            const LicenseCaptureScreen(),
       },
       initialRoute: _initialRoute,
     );

@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:road_helperr/ui/public_details/main_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,8 +9,7 @@ import 'package:road_helperr/services/auth_service.dart';
 import 'package:road_helperr/services/notification_service.dart';
 import 'package:road_helperr/utils/app_colors.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:road_helperr/services/google_auth_service.dart';
 
 class SignInScreen extends StatefulWidget {
   static const String routeName = "signinscreen";
@@ -33,24 +31,29 @@ class _SignInScreenState extends State<SignInScreen> {
     super.initState();
     _loadUserData();
   }
-  Future<UserCredential> signInWithGoogle() async {
-    // Trigger the authentication flow
-    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) {
-      throw Exception('Google Sign In was cancelled by user');
+
+  Future<Map<String, dynamic>?> signInWithGoogle() async {
+    debugPrint('Starting Google Sign-In process from signin_screen...');
+
+    // استخدام خدمة المصادقة المخصصة
+    final GoogleAuthService authService = GoogleAuthService();
+
+    try {
+      // محاولة تسجيل الدخول باستخدام الطريقة البديلة
+      final Map<String, dynamic>? userData =
+          await authService.signInWithGoogleAlternative();
+
+      if (userData == null) {
+        debugPrint('تم إلغاء تسجيل الدخول بواسطة المستخدم');
+        throw Exception('Google Sign In was cancelled by user');
+      }
+
+      debugPrint('تم تسجيل الدخول بنجاح: ${userData['email']}');
+      return userData;
+    } catch (e) {
+      debugPrint('خطأ في تسجيل الدخول باستخدام Google: ${e.toString()}');
+      throw Exception('Error during Google sign-in: ${e.toString()}');
     }
-
-    // Obtain the auth details from the request
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-    // Create a new credential
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    // Once signed in, return the UserCredential
-    return await FirebaseAuth.instance.signInWithCredential(credential);
   }
 
   Future<void> _loadUserData() async {
@@ -329,31 +332,127 @@ class _SignInScreenState extends State<SignInScreen> {
                           InkWell(
                             onTap: () async {
                               try {
-                                final userCredential = await signInWithGoogle();
+                                // Show loading indicator
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (BuildContext context) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  },
+                                );
+
+                                // استخدام دالة تسجيل الدخول المحدثة
+                                final userData = await signInWithGoogle();
+
+                                // Close loading dialog
+                                if (mounted) {
+                                  Navigator.of(context).pop();
+                                }
+
                                 if (!mounted) return;
 
-                                if (userCredential.user != null) {
-                                  // Save logged in user email
-                                  final prefs = await SharedPreferences.getInstance();
+                                if (userData != null) {
+                                  // حفظ بريد المستخدم
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
                                   await prefs.setString('logged_in_email',
-                                      userCredential.user!.email ?? '');
+                                      userData['email'].toString());
 
-                                  // Show success message before navigation
+                                  // توجيه المستخدم مباشرة إلى الشاشة الرئيسية عند تسجيل الدخول
                                   if (mounted) {
                                     NotificationService.showLoginSuccess(
                                       context,
                                       onConfirm: () {
                                         if (mounted) {
                                           Navigator.of(context)
-                                              .pushReplacementNamed(HomeScreen.routeName);
+                                              .pushReplacementNamed(
+                                                  HomeScreen.routeName);
                                         }
                                       },
                                     );
                                   }
                                 }
                               } catch (e) {
+                                // Close loading dialog if it's still showing
                                 if (mounted) {
-                                  NotificationService.showNetworkError(context);
+                                  // Check if dialog is showing before popping
+                                  try {
+                                    Navigator.of(context).pop();
+                                  } catch (dialogError) {
+                                    // Dialog might not be showing, ignore error
+                                  }
+
+                                  final BuildContext currentContext = context;
+                                  if (e
+                                      .toString()
+                                      .contains('PigeonUserDetails')) {
+                                    // For PigeonUserDetails error, we'll try to navigate anyway
+                                    // since the user is likely authenticated in Firebase
+                                    final authService = GoogleAuthService();
+                                    if (authService.isUserSignedIn()) {
+                                      final currentUser =
+                                          authService.getCurrentUser();
+                                      if (currentUser != null) {
+                                        final userData = {
+                                          'email': currentUser.email ?? '',
+                                          'firstName': currentUser.displayName
+                                                  ?.split(' ')
+                                                  .first ??
+                                              '',
+                                          'lastName': (currentUser.displayName
+                                                          ?.split(' ')
+                                                          .length ??
+                                                      0) >
+                                                  1
+                                              ? currentUser.displayName
+                                                      ?.split(' ')
+                                                      .skip(1)
+                                                      .join(' ') ??
+                                                  ''
+                                              : '',
+                                          'phone':
+                                              currentUser.phoneNumber ?? '',
+                                          'photoURL':
+                                              currentUser.photoURL ?? '',
+                                          'uid': currentUser.uid,
+                                          'isGoogleSignIn': true,
+                                        };
+
+                                        // توجيه المستخدم مباشرة إلى الشاشة الرئيسية عند تسجيل الدخول
+                                        NotificationService.showLoginSuccess(
+                                          currentContext,
+                                          onConfirm: () {
+                                            Navigator.of(currentContext)
+                                                .pushReplacementNamed(
+                                                    HomeScreen.routeName);
+                                          },
+                                        );
+                                      }
+                                    } else {
+                                      final lang =
+                                          AppLocalizations.of(currentContext)!;
+                                      showDialog(
+                                        context: currentContext,
+                                        builder: (context) => AlertDialog(
+                                          title: Text(lang.error),
+                                          content: const Text(
+                                              'There is a problem signing in with Google. Please try again later.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(context).pop(),
+                                              child: Text(lang.ok),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    NotificationService.showNetworkError(
+                                        currentContext);
+                                  }
                                 }
                               }
                             },
@@ -375,7 +474,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                   ),
                                   const SizedBox(width: 10),
                                   Text(
-                                    'Sign in with Google',
+                                    lang.signInWithGoogle,
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: mediaQuery.width * 0.04,

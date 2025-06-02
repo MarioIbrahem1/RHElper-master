@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:road_helperr/models/help_request.dart';
 import 'package:road_helperr/models/notification_model.dart';
-import 'package:road_helperr/services/help_request_service.dart';
-import 'package:road_helperr/services/notification_manager.dart';
+
+import 'package:road_helperr/services/hybrid_notification_service.dart';
+import 'package:road_helperr/ui/widgets/help_request_dialog.dart';
 import 'package:road_helperr/ui/screens/ai_welcome_screen.dart';
 import 'package:road_helperr/ui/screens/bottomnavigationbar_screes/map_screen.dart';
 import 'package:road_helperr/ui/screens/bottomnavigationbar_screes/profile_screen.dart';
@@ -25,8 +26,8 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen> {
   int _selectedIndex = 3; // Removed const since we need to update it
 
-  final HelpRequestService _helpRequestService = HelpRequestService();
-  final NotificationManager _notificationManager = NotificationManager();
+  final HybridNotificationService _notificationService =
+      HybridNotificationService();
   List<NotificationModel> _notifications = [];
   bool _isLoading = true;
 
@@ -34,57 +35,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void initState() {
     super.initState();
     _loadNotifications();
-
-    // إضافة إشعارات اختبارية للتجربة (سيتم إزالتها لاحقاً)
-    _addTestNotifications();
-  }
-
-  // دالة لإضافة إشعارات اختبارية
-  Future<void> _addTestNotifications() async {
-    // إضافة إشعار اختباري للتحديث
-    final updateNotification = NotificationModel(
-      id: 'test_update_${DateTime.now().millisecondsSinceEpoch}',
-      title: 'تحديث جديد متاح',
-      body: 'يتوفر تحديث جديد للتطبيق. انقر هنا للتحديث.',
-      type: 'update',
-      timestamp: DateTime.now(),
-      data: {'version': '1.2.0', 'url': 'https://example.com/update'},
-      isRead: false,
-    );
-
-    // إضافة إشعار اختباري للرسالة النظامية
-    final systemNotification = NotificationModel(
-      id: 'test_system_${DateTime.now().millisecondsSinceEpoch + 1}',
-      title: 'Welcome Message',
-      body: 'مرحباً بك في تطبيق Road Helper! نتمنى لك تجربة ممتعة.',
-      type: 'system_message',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      data: {},
-      isRead: false,
-    );
-
-    // إضافة الإشعارات الاختبارية
-    await _notificationManager.addNotification(updateNotification);
-    await _notificationManager.addNotification(systemNotification);
-
-    // إعادة تحميل الإشعارات
-    if (mounted) {
-      _loadNotifications();
-    }
   }
 
   // تحميل الإشعارات
   Future<void> _loadNotifications() async {
     try {
-      // استخدام مدير الإشعارات للحصول على جميع الإشعارات
-      final notifications = await _notificationManager.getAllNotifications();
-
-      if (mounted) {
-        setState(() {
-          _notifications = notifications;
-          _isLoading = false;
-        });
-      }
+      // الاستماع للإشعارات من Firebase
+      _notificationService.listenToNotifications().listen((notifications) {
+        if (mounted) {
+          setState(() {
+            _notifications = notifications;
+            _isLoading = false;
+          });
+        }
+      });
     } catch (e) {
       debugPrint('خطأ في تحميل الإشعارات: $e');
       if (mounted) {
@@ -98,8 +62,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   // مسح جميع الإشعارات
   Future<void> _clearAllNotifications() async {
     try {
-      // استخدام مدير الإشعارات لمسح جميع الإشعارات
-      await _notificationManager.clearAllNotifications();
+      await _notificationService.clearAllNotifications();
 
       if (mounted) {
         setState(() {
@@ -114,8 +77,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   // حذف إشعار محدد
   Future<void> _removeNotification(String notificationId) async {
     try {
-      // استخدام مدير الإشعارات لحذف إشعار محدد
-      await _notificationManager.removeNotification(notificationId);
+      await _notificationService.deleteNotification(notificationId);
 
       if (mounted) {
         setState(() {
@@ -132,7 +94,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Future<void> _markAsRead(NotificationModel notification) async {
     if (!notification.isRead) {
       try {
-        await _notificationManager.markAsRead(notification.id);
+        await _notificationService.markAsRead(notification.id);
 
         if (mounted) {
           setState(() {
@@ -154,8 +116,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (notification.type == 'help_request') {
       await _showHelpRequestDialog(notification);
     } else if (notification.type == 'update') {
-      // معالجة إشعار التحديث
-      await NotificationManager().handleNotificationTap(notification, context);
+      // معالجة إشعار التحديث - يمكن إضافة منطق التحديث هنا
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(notification.title),
+            content: Text(notification.body),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('حسناً'),
+              ),
+            ],
+          ),
+        );
+      }
     } else if (mounted) {
       // عرض محتوى الإشعارات الأخرى
       showDialog(
@@ -186,8 +162,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       final request = HelpRequest.fromJson(notification.data!);
 
       // عرض الحوار
-      final result =
-          await _helpRequestService.showHelpRequestDialog(context, request);
+      final result = await HelpRequestDialog.show(context, request);
 
       // إذا استجاب المستخدم للطلب، قم بحذف الإشعار
       if (result != null) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:road_helperr/ui/widgets/custom_message_dialog.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:road_helperr/utils/message_utils.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -20,7 +21,8 @@ class NotificationService {
       message: message,
       isError: false,
       onConfirm: onConfirm,
-      confirmButtonText: confirmButtonText ?? "Continue",
+      confirmButtonText:
+          confirmButtonText ?? MessageUtils.getContinueButtonText(context),
     );
   }
 
@@ -37,7 +39,8 @@ class NotificationService {
       message: message,
       isError: true,
       onConfirm: onConfirm,
-      confirmButtonText: confirmButtonText ?? "Try Again",
+      confirmButtonText:
+          confirmButtonText ?? MessageUtils.getTryAgainButtonText(context),
     );
   }
 

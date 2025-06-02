@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:road_helperr/models/user_location.dart';
-import 'package:road_helperr/services/api_service.dart';
+import 'package:road_helperr/services/hybrid_user_location_service.dart';
 import 'package:road_helperr/services/places_service.dart';
 import 'package:road_helperr/utils/location_service.dart';
 import 'package:road_helperr/utils/marker_utils.dart';
@@ -150,10 +150,9 @@ class MapController {
       _currentLocation = LatLng(position.latitude, position.longitude);
       onLocationChanged(_currentLocation);
 
-      // Send location update to server
-      await ApiService.updateUserLocation(
-        latitude: position.latitude,
-        longitude: position.longitude,
+      // Send location update to server (hybrid)
+      await HybridUserLocationService().updateUserLocation(
+        LatLng(position.latitude, position.longitude),
       );
       debugPrint('Successfully updated user location to server');
     } catch (e) {
@@ -183,11 +182,15 @@ class MapController {
       const double searchRadius = 1000; // 1 km radius for testing nearby users
 
       debugPrint('Fetching users within $searchRadius meters radius');
-      List<UserLocation> nearbyUsers = await ApiService.getNearbyUsers(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        radius: searchRadius,
+
+      // استخدام الخدمة الهجينة للحصول على المستخدمين القريبين
+      final nearbyUsersStream = HybridUserLocationService().listenToNearbyUsers(
+        LatLng(position.latitude, position.longitude),
+        searchRadius / 1000, // تحويل إلى كيلومتر
       );
+
+      // الحصول على أول نتيجة من الـ stream
+      List<UserLocation> nearbyUsers = await nearbyUsersStream.first;
 
       debugPrint('Found ${nearbyUsers.length} nearby users');
 

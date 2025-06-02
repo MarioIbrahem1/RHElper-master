@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:road_helperr/models/user_location.dart';
-import 'package:road_helperr/services/api_service.dart';
+import 'package:road_helperr/services/hybrid_help_request_service.dart';
 import 'package:road_helperr/services/notification_service.dart';
 import 'package:road_helperr/ui/screens/chat_screen.dart';
 import 'package:road_helperr/ui/widgets/user_rating_dialog.dart';
@@ -88,8 +88,9 @@ class _UserDetailsBottomSheetState extends State<UserDetailsBottomSheet> {
     });
 
     try {
-      final result = await ApiService.sendHelpRequest(
+      await HybridHelpRequestService().sendHelpRequest(
         receiverId: widget.user.userId,
+        receiverName: widget.user.userName,
         senderLocation: widget.currentUserLocation,
         receiverLocation: widget.user.position,
         message: 'I need help with my car. Can you assist me?',

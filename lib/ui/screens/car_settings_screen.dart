@@ -40,11 +40,18 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // تحديث بيانات التسجيل في SignupProvider
-    final signupProvider = Provider.of<SignupProvider>(context, listen: false);
-    signupProvider.setUserData(widget.registrationData);
-    // يمكنك هنا طباعة الداتا لو عايز
-    // signupProvider.printData();
+
+    // استخدام ميكروتاسك لتأجيل تحديث البيانات بعد اكتمال بناء الشجرة
+    Future.microtask(() {
+      // تحديث بيانات التسجيل في SignupProvider
+      if (mounted) {
+        final signupProvider =
+            Provider.of<SignupProvider>(context, listen: false);
+        signupProvider.setUserData(widget.registrationData);
+        // يمكنك هنا طباعة الداتا لو عايز
+        // signupProvider.printData();
+      }
+    });
   }
 
   @override
@@ -118,9 +125,10 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
       // Check if widget is still mounted before using context
       if (!mounted) return;
 
+      final lang = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('حدث خطأ: ${e.toString()}'),
+          content: Text('${lang.error}: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -160,8 +168,6 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-
-
                     // Letters Input
                     Container(
                       decoration: BoxDecoration(
@@ -189,8 +195,7 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
                           ),
                           const SizedBox(height: 15),
                           Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceEvenly,
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               // First Letter Box
                               SizedBox(
@@ -206,14 +211,12 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
                                   decoration: InputDecoration(
                                     counterText: "",
                                     enabledBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide:
                                           BorderSide(color: accentColor),
                                     ),
                                     focusedBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide:
                                           BorderSide(color: accentColor),
                                     ),
@@ -249,14 +252,12 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
                                   decoration: InputDecoration(
                                     counterText: "",
                                     enabledBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide:
                                           BorderSide(color: accentColor),
                                     ),
                                     focusedBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide:
                                           BorderSide(color: accentColor),
                                     ),
@@ -292,14 +293,12 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
                                   decoration: InputDecoration(
                                     counterText: "",
                                     enabledBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide:
                                           BorderSide(color: accentColor),
                                     ),
                                     focusedBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       borderSide:
                                           BorderSide(color: accentColor),
                                     ),
@@ -363,13 +362,11 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
                                   color: accentColor.withOpacity(0.5)),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(color: accentColor),
+                                borderSide: BorderSide(color: accentColor),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    BorderSide(color: accentColor),
+                                borderSide: BorderSide(color: accentColor),
                               ),
                               filled: true,
                               fillColor: backgroundColor,
@@ -381,8 +378,7 @@ class _CarSettingsScreenState extends State<CarSettingsScreen> {
                                 return lang.pleaseEnterNumbers;
                               }
                               if (value.length > 7 || value.isEmpty) {
-                                return lang
-                                    .mustBeAtLeast1NumberAndMax7Digits;
+                                return lang.mustBeAtLeast1NumberAndMax7Digits;
                               }
                               return null;
                             },

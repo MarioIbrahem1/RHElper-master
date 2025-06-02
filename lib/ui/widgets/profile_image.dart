@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileImageWidget extends StatefulWidget {
   final String email;
@@ -61,8 +62,68 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
       // Generate a new timestamp for cache busting
       _timestamp = DateTime.now().millisecondsSinceEpoch.toString();
 
-      // Based on the Postman screenshot, we need to use GET method with email in the body
-      print('Fetching profile image for email: ${widget.email}');
+      // التحقق مما إذا كان المستخدم قد قام بالتسجيل باستخدام Google
+      final prefs = await SharedPreferences.getInstance();
+      final isGoogleSignIn = prefs.getBool('is_google_sign_in') ?? false;
+
+      // إذا كان المستخدم قد قام بالتسجيل باستخدام Google، نحاول الحصول على صورة البروفايل من API الخاص بمستخدمي Google
+      if (isGoogleSignIn) {
+        debugPrint(
+            'This is a Google user, trying to fetch Google profile image');
+
+        // استدعاء API لجلب بيانات مستخدم Google
+        final response = await http.post(
+          Uri.parse('http://81.10.91.96:8132/api/datagoogle'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'email': widget.email.trim(),
+          }),
+        );
+
+        debugPrint('Google API response status code: ${response.statusCode}');
+        debugPrint('Google API response body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final jsonResponse = jsonDecode(response.body);
+
+          if (jsonResponse['status'] == 'success' &&
+              jsonResponse['data'] != null) {
+            final userData = jsonResponse['data']['user'];
+
+            if (userData['profile_picture'] != null) {
+              String imageUrl = userData['profile_picture'].toString();
+              debugPrint('Found Google user profile image: $imageUrl');
+
+              // التأكد من أن الرابط صحيح
+              if (!imageUrl.startsWith('http')) {
+                if (imageUrl.startsWith('/')) {
+                  imageUrl = 'http://81.10.91.96:8132$imageUrl';
+                } else {
+                  imageUrl = 'http://81.10.91.96:8132/$imageUrl';
+                }
+                debugPrint('Fixed Google user image URL: $imageUrl');
+              }
+
+              // إضافة معلمة لمنع التخزين المؤقت
+              if (!imageUrl.contains('?')) {
+                imageUrl = '$imageUrl?t=$_timestamp';
+              } else if (!imageUrl.contains('t=')) {
+                imageUrl = '$imageUrl&t=$_timestamp';
+              }
+
+              // تحميل الصورة من الرابط
+              _fetchImageFromUrl(imageUrl);
+              return;
+            }
+          }
+        }
+      }
+
+      // إذا لم نتمكن من الحصول على صورة البروفايل من API الخاص بمستخدمي Google، نستخدم الطريقة العادية
+      debugPrint('Fetching profile image for email: ${widget.email}');
 
       // Create a GET request with a body
       final request =
@@ -73,15 +134,15 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
       final streamedResponse = await request.send().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          print('Request timed out for profile image');
+          debugPrint('Request timed out for profile image');
           throw Exception('Request timed out');
         },
       );
 
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('Response status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      debugPrint('Response status code: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final imageUrl = _extractImageUrlFromResponse(response);
@@ -91,13 +152,13 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
       }
 
       // If we get here, the request failed
-      print('Failed to get profile image');
+      debugPrint('Failed to get profile image');
       setState(() {
         _isLoading = false;
         _hasError = true;
       });
     } catch (e) {
-      print('Error fetching profile image: $e');
+      debugPrint('Error fetching profile image: $e');
       setState(() {
         _isLoading = false;
         _hasError = true;
@@ -109,7 +170,7 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
   String _extractImageUrlFromResponse(http.Response response) {
     try {
       final jsonResponse = jsonDecode(response.body);
-      print('Response: ${response.body}');
+      debugPrint('Response: ${response.body}');
 
       // Check if the response has the expected structure
       if (jsonResponse['status'] == 'success' &&
@@ -117,7 +178,7 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
           (jsonResponse['images'] as List).isNotEmpty) {
         // Get the first image from the list
         final firstImage = jsonResponse['images'][0];
-        print('First image: $firstImage');
+        debugPrint('First image: $firstImage');
 
         // Check for imageUrl field
         if (firstImage is Map<String, dynamic>) {
@@ -126,22 +187,22 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
           // Try to find URL in various possible fields
           if (firstImage.containsKey('imageUrl')) {
             imageUrl = firstImage['imageUrl'].toString();
-            print('Found image URL in imageUrl field: $imageUrl');
+            debugPrint('Found image URL in imageUrl field: $imageUrl');
           } else if (firstImage.containsKey('filepath')) {
             final filepath = firstImage['filepath'].toString();
             imageUrl = 'http://81.10.91.96:8132/$filepath';
-            print('Found image URL in filepath field: $imageUrl');
+            debugPrint('Found image URL in filepath field: $imageUrl');
           } else if (firstImage.containsKey('filePath')) {
             final filepath = firstImage['filePath'].toString();
             imageUrl = 'http://81.10.91.96:8132/$filepath';
-            print('Found image URL in filePath field: $imageUrl');
+            debugPrint('Found image URL in filePath field: $imageUrl');
           } else {
             // Look for any field that might contain a URL or path
             for (var key in firstImage.keys) {
               if (key.toLowerCase().contains('url') ||
                   key.toLowerCase().contains('path')) {
                 imageUrl = firstImage[key].toString();
-                print('Found image URL in $key field: $imageUrl');
+                debugPrint('Found image URL in $key field: $imageUrl');
                 break;
               }
             }
@@ -161,7 +222,7 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
               imageUrl = '$imageUrl&t=$_timestamp';
             }
 
-            print('Fetching image from URL: $imageUrl');
+            debugPrint('Fetching image from URL: $imageUrl');
 
             _fetchImageFromUrl(imageUrl);
             return imageUrl;
@@ -171,7 +232,7 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
 
       return '';
     } catch (e) {
-      print('Error parsing JSON: $e');
+      debugPrint('Error parsing JSON: $e');
       // If it's not JSON, assume it's binary image data
       setState(() {
         _imageBytes = response.bodyBytes;
@@ -193,7 +254,7 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
           });
         }
       } else {
-        print('Failed to fetch image: ${imageResponse.statusCode}');
+        debugPrint('Failed to fetch image: ${imageResponse.statusCode}');
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -202,7 +263,7 @@ class _ProfileImageWidgetState extends State<ProfileImageWidget> {
         }
       }
     } catch (e) {
-      print('Error fetching image from URL: $e');
+      debugPrint('Error fetching image from URL: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

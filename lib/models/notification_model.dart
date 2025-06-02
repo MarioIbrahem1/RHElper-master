@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+import 'package:road_helperr/utils/message_utils.dart';
 
 enum NotificationType {
   helpRequest,
@@ -67,16 +69,26 @@ class NotificationModel {
     }
   }
 
-  // تحويل من نوع HelpRequest إلى NotificationModel
-  static NotificationModel fromHelpRequest(
-      Map<String, dynamic> helpRequestData) {
+  // Convert from HelpRequest to NotificationModel
+  static NotificationModel fromHelpRequest(Map<String, dynamic> helpRequestData,
+      [BuildContext? context]) {
     final String requestId = helpRequestData['requestId'] ?? '';
     final String senderName = helpRequestData['senderName'] ?? '';
 
+    // Default title and body if context is not provided
+    String title = 'Help Request';
+    String body = 'You received a help request from $senderName';
+
+    // If context is provided, use localized messages
+    if (context != null) {
+      title = MessageUtils.getHelpRequestTitle(context);
+      body = MessageUtils.getHelpRequestBody(context, senderName);
+    }
+
     return NotificationModel(
       id: requestId,
-      title: 'طلب مساعدة',
-      body: 'تلقيت طلب مساعدة من $senderName',
+      title: title,
+      body: body,
       type: 'help_request',
       timestamp: helpRequestData['timestamp'] is String
           ? DateTime.parse(helpRequestData['timestamp'])

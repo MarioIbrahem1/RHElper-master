@@ -1,47 +1,189 @@
 {
+  "@@locale": "en",
   "welcomeBack": "Welcome back!",
+  "@welcomeBack": {
+    "description": "Welcome message for returning users"
+  },
   "enterYourEmail": "Enter your email",
+  "@enterYourEmail": {
+    "description": "Placeholder text for email input field"
+  },
   "email": "Email",
+  "@email": {
+    "description": "Label for email field"
+  },
   "pleaseEnterYourEmail": "Please enter your email",
+  "@pleaseEnterYourEmail": {
+    "description": "Validation message for empty email field"
+  },
   "pleaseEnterAValidEmail": "Please enter a valid email",
+  "@pleaseEnterAValidEmail": {
+    "description": "Validation message for invalid email format"
+  },
   "enterYourPassword": "Enter your password",
+  "@enterYourPassword": {
+    "description": "Placeholder text for password input field"
+  },
   "password": "Password",
+  "@password": {
+    "description": "Label for password field"
+  },
   "pleaseEnterYourPassword": "Please enter your password",
+  "@pleaseEnterYourPassword": {
+    "description": "Validation message for empty password field"
+  },
   "passwordMustBeAtLeast6Characters": "Password must be at least 6 characters",
+  "@passwordMustBeAtLeast6Characters": {
+    "description": "Validation message for password length"
+  },
   "rememberMe": "Remember me",
+  "@rememberMe": {
+    "description": "Checkbox label for remember login"
+  },
   "forgotPassword": "Forgot password?",
+  "@forgotPassword": {
+    "description": "Link text for password recovery"
+  },
   "login": "Login",
+  "@login": {
+    "description": "Login button text"
+  },
   "dontHaveAnAccount": "Don't have an account?",
+  "@dontHaveAnAccount": {
+    "description": "Text asking if user doesn't have account"
+  },
   "register": "Register now",
+  "@register": {
+    "description": "Registration link text"
+  },
   "editProfile": "Edit profile",
+  "@editProfile": {
+    "description": "Edit profile menu item"
+  },
   "language": "Language",
+  "@language": {
+    "description": "Language settings menu item"
+  },
   "darkMode": "Dark mode",
+  "@darkMode": {
+    "description": "Dark mode toggle setting"
+  },
   "about": "About",
+  "@about": {
+    "description": "About menu item"
+  },
   "logout": "Logout",
+  "@logout": {
+    "description": "Logout menu item"
+  },
   "english": "English",
+  "@english": {
+    "description": "English language option"
+  },
   "arabic": "Arabic",
+  "@arabic": {
+    "description": "Arabic language option"
+  },
   "changeProfileImage": "Change profile image",
+  "@changeProfileImage": {
+    "description": "Option to change profile picture"
+  },
   "otpVerification": "OTP Verification",
+  "@otpVerification": {
+    "description": "OTP verification screen title"
+  },
   "enterOtpSentToEmail": "Enter the code sent to {email}",
+  "@enterOtpSentToEmail": {
+    "description": "Instruction to enter OTP code",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "description": "User's email address"
+      }
+    }
+  },
   "resendOtp": "Resend code",
+  "@resendOtp": {
+    "description": "Button to resend OTP code"
+  },
   "resendInSecondsSec": "Resend in {seconds} seconds",
+  "@resendInSecondsSec": {
+    "description": "Timer text for OTP resend",
+    "placeholders": {
+      "seconds": {
+        "type": "int",
+        "description": "Number of seconds remaining"
+      }
+    }
+  },
   "timer": "Timer",
+  "@timer": {
+    "description": "Timer label"
+  },
   "otpExpired": "OTP expired",
+  "@otpExpired": {
+    "description": "Message when OTP has expired"
+  },
   "weHaveSentAVerificationCodeToTheEmailAgmailcom": "We have sent a verification code to the email \"A**@gmail.com\"",
+  "@weHaveSentAVerificationCodeToTheEmailAgmailcom": {
+    "description": "OTP verification message"
+  },
   "thisIsATemporaryCodeDoNotShareItWithAnyoneSharingTheOtpWithOthersCanLeadToSignificantSecurityRisksTheOtpIsIntendedToBeAPrivateCode": "This is a temporary code, do not share it with anyone. Sharing the OTP with others can lead to significant security risks. The OTP is intended to be a private code.",
+  "@thisIsATemporaryCodeDoNotShareItWithAnyoneSharingTheOtpWithOthersCanLeadToSignificantSecurityRisksTheOtpIsIntendedToBeAPrivateCode": {
+    "description": "OTP security warning message"
+  },
   "notifications": "Notifications",
+  "@notifications": {
+    "description": "Notifications menu item"
+  },
   "privacy": "Privacy",
+  "@privacy": {
+    "description": "Privacy menu item"
+  },
   "security": "Security",
+  "@security": {
+    "description": "Security menu item"
+  },
   "help": "Help",
+  "@help": {
+    "description": "Help menu item"
+  },
   "termsAndConditions": "Terms and conditions",
+  "@termsAndConditions": {
+    "description": "Terms and conditions menu item"
+  },
   "contactUs": "Contact us",
+  "@contactUs": {
+    "description": "Contact us menu item"
+  },
   "otpVerificationText": "We have sent a verification code to the email \"A**@gmail.com\"",
+  "@otpVerificationText": {
+    "description": "OTP verification text"
+  },
   "otpAllFieldsRequired": "All fields are required",
+  "@otpAllFieldsRequired": {
+    "description": "Validation message for OTP fields"
+  },
   "verify": "Verify",
+  "@verify": {
+    "description": "Verify button text"
+  },
   "enterCode": "Enter code",
+  "@enterCode": {
+    "description": "Instruction to enter verification code"
+  },
   "theOtpHasExpired": "The OTP has expired!",
+  "@theOtpHasExpired": {
+    "description": "Message when OTP expires"
+  },
   "requestOtp": "Request OTP",
+  "@requestOtp": {
+    "description": "Button to request new OTP"
+  },
   "backToLogin": "Back to login",
+  "@backToLogin": {
+    "description": "Link to go back to login screen"
+  },
   "getStarted": "Get started",
   "ifYouveGotTheTimeWeveGotTheShine": "If you've got the time, we've got the shine",
   "justTheProtectionYouAndYourCarNeedSpeakToUsForBestServices": "Just the protection you and your car need\nSpeak to us for best services",
@@ -108,11 +250,21 @@
   "notificationsNav": "Notifications",
   "profile": "Profile",
   "camera": "Camera",
+  "@camera": {
+    "description": "Camera option for image capture"
+  },
   "send": "Send",
+  "@send": {
+    "description": "Send button text"
+  },
   "back": "Back",
+  "@back": {
+    "description": "Back button text"
+  },
   "signUpButton": "Sign Up",
   "enterYourFullName": "Enter your full name",
   "enterYourPhoneNumber": "Enter your phone number",
+  "pleaseEnterPhoneNumber": "Please enter your phone number",
   "alreadyHaveAnAccount": "Already have an account?",
   "rememberFor30Days": "Remember me for 30 days",
   "allFieldsMustBeFilledOut": "All fields must be filled out",
@@ -195,20 +347,218 @@
   "share": "Share",
   "tryAgain": "Try Again",
   "continueText": "Continue",
-   
+
   "errorLoadingProfile": "Error loading profile",
   "couldNotLoadProfileImage": "Could not load profile image. Please try again later",
   "uploadingImage": "Uploading image...",
-  "camera": "Camera",
-  "selectImageSource": "Select Image Source",
-  "errorLoadingProfileImage": "Error loading profile image",
-  "profileImageLoaded": "Profile image loaded successfully",
   "gallery": "Gallery",
+  "@gallery": {
+    "description": "Gallery option for image selection"
+  },
   "userEmailNotFound": "User email not found. Please log in again",
+  "@userEmailNotFound": {
+    "description": "Error message when user email is not found"
+  },
   "errorUploadingImage": "Error uploading image",
+  "@errorUploadingImage": {
+    "description": "Error message for image upload failure"
+  },
   "profileImageUpdated": "Profile image updated successfully",
+  "@profileImageUpdated": {
+    "description": "Success message for profile image update"
+  },
   "failedToUploadImage": "Failed to upload image. Please try again",
-
-  "enterOtpSentToEmail": "Enter OTP sent to\n{email}",
-"resendInSeconds": "Resend in {timeLeft} seconds"
+  "@failedToUploadImage": {
+    "description": "Error message for failed image upload"
+  },
+  "resendInSeconds": "Resend in {timeLeft} seconds",
+  "@resendInSeconds": {
+    "description": "Timer text for OTP resend",
+    "placeholders": {
+      "timeLeft": {
+        "type": "int",
+        "description": "Time remaining in seconds"
+      }
+    }
+  },
+  "helpRequest": "Help Request",
+  "@helpRequest": {
+    "description": "Help request notification title"
+  },
+  "accept": "Accept",
+  "@accept": {
+    "description": "Accept button text"
+  },
+  "decline": "Decline",
+  "@decline": {
+    "description": "Decline button text"
+  },
+  "youHaveReceivedHelpRequest": "You have received a help request from:",
+  "@youHaveReceivedHelpRequest": {
+    "description": "Help request notification message"
+  },
+  "failedToRespondToHelpRequest": "Failed to respond to help request",
+  "@failedToRespondToHelpRequest": {
+    "description": "Error message for failed help request response"
+  },
+  "distance": "Distance",
+  "@distance": {
+    "description": "Distance label"
+  },
+  "kmAway": "{distance} km away",
+  "@kmAway": {
+    "description": "Distance measurement text",
+    "placeholders": {
+      "distance": {
+        "type": "double",
+        "description": "Distance in kilometers"
+      }
+    }
+  },
+  "name": "Name",
+  "@name": {
+    "description": "Name label"
+  },
+  "car": "Car",
+  "@car": {
+    "description": "Car label"
+  },
+  "color": "Color",
+  "@color": {
+    "description": "Color label"
+  },
+  "message": "Message",
+  "@message": {
+    "description": "Message label"
+  },
+  "updateAvailable": "Update Available",
+  "@updateAvailable": {
+    "description": "Update notification title"
+  },
+  "updateAvailableMessage": "Version {version} is now available. Tap to update.",
+  "@updateAvailableMessage": {
+    "description": "Update notification message",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "description": "New version number"
+      }
+    }
+  },
+  "newNotification": "New Notification",
+  "@newNotification": {
+    "description": "New notification title"
+  },
+  "otpSent": "OTP Sent",
+  "@otpSent": {
+    "description": "OTP sent confirmation title"
+  },
+  "otpSentToEmail": "OTP has been sent to your email",
+  "@otpSentToEmail": {
+    "description": "OTP sent confirmation message"
+  },
+  "resendCode": "Resend Code",
+  "@resendCode": {
+    "description": "Button to resend OTP code"
+  },
+  "signInWithGoogle": "Sign in with Google",
+  "@signInWithGoogle": {
+    "description": "Google sign in button text"
+  },
+  "signUpWithGoogle": "Sign up with Google",
+  "@signUpWithGoogle": {
+    "description": "Google sign up button text"
+  },
+  "errorInVerification": "Error in verification",
+  "@errorInVerification": {
+    "description": "Error message for verification failure"
+  },
+  "pleaseEnterA6DigitOTPCode": "Please enter a 6-digit OTP code",
+  "@pleaseEnterA6DigitOTPCode": {
+    "description": "Validation message for OTP code format"
+  },
+  "emailAlreadyExists": "This email is already associated with an existing account. Please login instead of signing up.",
+  "@emailAlreadyExists": {
+    "description": "Error message when email already exists"
+  },
+  "licenseCaptureTitle": "Driver's License Capture",
+  "@licenseCaptureTitle": {
+    "description": "Title for license capture screen"
+  },
+  "placeLicenseInFrameFront": "Place the license in the frame and capture the front side",
+  "@placeLicenseInFrameFront": {
+    "description": "Instruction for capturing front of license"
+  },
+  "flipLicenseAndCaptureBack": "Flip the license and capture the back side",
+  "@flipLicenseAndCaptureBack": {
+    "description": "Instruction for capturing back of license"
+  },
+  "placeLicenseInFrame": "Place the driver's license in the frame",
+  "@placeLicenseInFrame": {
+    "description": "General instruction for license placement"
+  },
+  "frontSide": "Front Side",
+  "@frontSide": {
+    "description": "Label for front side of license"
+  },
+  "backSide": "Back Side",
+  "@backSide": {
+    "description": "Label for back side of license"
+  },
+  "placeLicenseHereFront": "Place driver's license here\n(Front Side)",
+  "@placeLicenseHereFront": {
+    "description": "Placeholder text for front license capture"
+  },
+  "placeLicenseHereBack": "Place driver's license here\n(Back Side)",
+  "@placeLicenseHereBack": {
+    "description": "Placeholder text for back license capture"
+  },
+  "preparingCamera": "Preparing camera...",
+  "@preparingCamera": {
+    "description": "Loading message for camera preparation"
+  },
+  "captureError": "Error capturing image",
+  "@captureError": {
+    "description": "Error message for image capture failure"
+  },
+  "retakePhoto": "Retake",
+  "@retakePhoto": {
+    "description": "Button to retake photo"
+  },
+  "confirm": "Confirm",
+  "@confirm": {
+    "description": "Confirm button text"
+  },
+  "completed": "Done",
+  "@completed": {
+    "description": "Completion status text"
+  },
+  "flipToBack": "Flip to Back",
+  "@flipToBack": {
+    "description": "Button to flip to back side capture"
+  },
+  "captureFront": "Capture Front",
+  "@captureFront": {
+    "description": "Button to capture front side"
+  },
+  "captureBack": "Capture Back",
+  "@captureBack": {
+    "description": "Button to capture back side"
+  },
+  "capturing": "Capturing...",
+  "@capturing": {
+    "description": "Status text during image capture"
+  },
+  "retake": "Retake",
+  "@retake": {
+    "description": "Button to retake image"
+  },
+  "continueNext": "Continue",
+  "@continueNext": {
+    "description": "Button to continue to next step"
+  },
+  "pleaseCaptureBothSides": "Please capture both front and back of the license",
+  "@pleaseCaptureBothSides": {
+    "description": "Validation message for license capture completion"
+  }
 }

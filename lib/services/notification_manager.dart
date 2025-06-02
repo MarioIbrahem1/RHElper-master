@@ -1,31 +1,33 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+// import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:road_helperr/models/notification_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:road_helperr/services/update_service.dart';
+import 'package:road_helperr/utils/message_utils.dart';
 
 class NotificationManager {
   static final NotificationManager _instance = NotificationManager._internal();
   factory NotificationManager() => _instance;
   NotificationManager._internal();
 
-  // مفتاح لقائمة معرفات الإشعارات
+  // Key for notification IDs list
   static const String _notificationIdsKey = 'notification_ids';
-  // بادئة لمفاتيح بيانات الإشعارات
+  // Prefix for notification data keys
   static const String _notificationPrefix = 'notification_';
-  // مفتاح لعدد الإشعارات غير المقروءة
+  // Key for unread notifications count
   static const String _unreadCountKey = 'unread_notifications_count';
 
-  // الحصول على جميع الإشعارات
+  // Get all notifications
   Future<List<NotificationModel>> getAllNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // الحصول على معرفات الإشعارات
+      // Get notification IDs
       final List<String> notificationIds =
           prefs.getStringList(_notificationIdsKey) ?? [];
 
-      // الحصول على بيانات كل إشعار
+      // Get data for each notification
       final List<NotificationModel> notifications = [];
 
       for (final id in notificationIds) {
@@ -38,7 +40,7 @@ class NotificationManager {
             final Map<String, dynamic> data = jsonDecode(notificationData);
             notifications.add(NotificationModel.fromJson(data));
           } catch (e) {
-            debugPrint('خطأ في تحليل بيانات الإشعار: $e');
+            debugPrint('Error parsing notification data: $e');
           }
         }
       }
@@ -48,65 +50,65 @@ class NotificationManager {
 
       return notifications;
     } catch (e) {
-      debugPrint('خطأ في الحصول على الإشعارات: $e');
+      debugPrint('Error getting notifications: $e');
       return [];
     }
   }
 
-  // إضافة إشعار جديد
+  // Add a new notification
   Future<void> addNotification(NotificationModel notification) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // الحصول على معرفات الإشعارات الحالية
+      // Get the current notification IDs
       final List<String> notificationIds =
           prefs.getStringList(_notificationIdsKey) ?? [];
 
-      // إضافة معرف الإشعار الجديد إذا لم يكن موجوداً
+      // Add the new notification ID if it doesn't exist
       if (!notificationIds.contains(notification.id)) {
         notificationIds.add(notification.id);
         await prefs.setStringList(_notificationIdsKey, notificationIds);
 
-        // زيادة عدد الإشعارات غير المقروءة
+        // Increase unread notifications count
         final int unreadCount = prefs.getInt(_unreadCountKey) ?? 0;
         await prefs.setInt(_unreadCountKey, unreadCount + 1);
       }
 
-      // حفظ بيانات الإشعار
+      // Save notification data
       await prefs.setString(
         '$_notificationPrefix${notification.id}',
         jsonEncode(notification.toJson()),
       );
     } catch (e) {
-      debugPrint('خطأ في إضافة الإشعار: $e');
+      debugPrint('Error adding notification: $e');
     }
   }
 
-  // تعليم إشعار كمقروء
+  // Mark a notification as read
   Future<void> markAsRead(String notificationId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // الحصول على بيانات الإشعار
+      // Get notification data
       final String? notificationData =
           prefs.getString('$_notificationPrefix$notificationId');
 
       if (notificationData != null) {
-        // تحليل بيانات الإشعار
+        // Parse notification data
         final Map<String, dynamic> data = jsonDecode(notificationData);
         final notification = NotificationModel.fromJson(data);
 
-        // إذا كان الإشعار غير مقروء، قم بتحديثه وتقليل العدد
+        // If notification is unread, update it and decrease the count
         if (!notification.isRead) {
           notification.isRead = true;
 
-          // حفظ بيانات الإشعار المحدثة
+          // Save updated notification data
           await prefs.setString(
             '$_notificationPrefix$notificationId',
             jsonEncode(notification.toJson()),
           );
 
-          // تقليل عدد الإشعارات غير المقروءة
+          // Decrease unread notifications count
           final int unreadCount = prefs.getInt(_unreadCountKey) ?? 0;
           if (unreadCount > 0) {
             await prefs.setInt(_unreadCountKey, unreadCount - 1);
@@ -114,11 +116,11 @@ class NotificationManager {
         }
       }
     } catch (e) {
-      debugPrint('خطأ في تعليم الإشعار كمقروء: $e');
+      debugPrint('Error marking notification as read: $e');
     }
   }
 
-  // تعليم جميع الإشعارات كمقروءة
+  // Mark all notifications as read
   Future<void> markAllAsRead() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -134,23 +136,23 @@ class NotificationManager {
         }
       }
 
-      // إعادة تعيين عدد الإشعارات غير المقروءة
+      // Reset unread notifications count
       await prefs.setInt(_unreadCountKey, 0);
     } catch (e) {
-      debugPrint('خطأ في تعليم جميع الإشعارات كمقروءة: $e');
+      debugPrint('Error marking all notifications as read: $e');
     }
   }
 
-  // حذف إشعار محدد
+  // Remove a specific notification
   Future<void> removeNotification(String notificationId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // الحصول على معرفات الإشعارات
+      // Get notification IDs
       final List<String> notificationIds =
           prefs.getStringList(_notificationIdsKey) ?? [];
 
-      // الحصول على بيانات الإشعار لمعرفة ما إذا كان مقروءاً
+      // Get notification data to check if it's read
       final String? notificationData =
           prefs.getString('$_notificationPrefix$notificationId');
 
@@ -158,7 +160,7 @@ class NotificationManager {
         final Map<String, dynamic> data = jsonDecode(notificationData);
         final notification = NotificationModel.fromJson(data);
 
-        // إذا كان الإشعار غير مقروء، قم بتقليل العدد
+        // If notification is unread, decrease the count
         if (!notification.isRead) {
           final int unreadCount = prefs.getInt(_unreadCountKey) ?? 0;
           if (unreadCount > 0) {
@@ -167,62 +169,73 @@ class NotificationManager {
         }
       }
 
-      // إزالة معرف الإشعار من القائمة
+      // Remove notification ID from the list
       notificationIds.remove(notificationId);
       await prefs.setStringList(_notificationIdsKey, notificationIds);
 
-      // حذف بيانات الإشعار
+      // Delete notification data
       await prefs.remove('$_notificationPrefix$notificationId');
     } catch (e) {
-      debugPrint('خطأ في حذف الإشعار: $e');
+      debugPrint('Error removing notification: $e');
     }
   }
 
-  // حذف جميع الإشعارات
+  // Clear all notifications
   Future<void> clearAllNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // الحصول على معرفات الإشعارات
+      // Get notification IDs
       final List<String> notificationIds =
           prefs.getStringList(_notificationIdsKey) ?? [];
 
-      // حذف بيانات جميع الإشعارات
+      // Delete all notification data
       for (final id in notificationIds) {
         await prefs.remove('$_notificationPrefix$id');
       }
 
-      // مسح قائمة معرفات الإشعارات
+      // Clear notification IDs list
       await prefs.setStringList(_notificationIdsKey, []);
 
-      // إعادة تعيين عدد الإشعارات غير المقروءة
+      // Reset unread notifications count
       await prefs.setInt(_unreadCountKey, 0);
     } catch (e) {
-      debugPrint('خطأ في حذف جميع الإشعارات: $e');
+      debugPrint('Error clearing all notifications: $e');
     }
   }
 
-  // الحصول على عدد الإشعارات غير المقروءة
+  // Get unread notifications count
   Future<int> getUnreadCount() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getInt(_unreadCountKey) ?? 0;
     } catch (e) {
-      debugPrint('خطأ في الحصول على عدد الإشعارات غير المقروءة: $e');
+      debugPrint('Error getting unread notifications count: $e');
       return 0;
     }
   }
 
-  // إضافة إشعار تحديث جديد
+  // Add a new update notification
   Future<void> addUpdateNotification({
     required String version,
     required String downloadUrl,
     required String releaseNotes,
+    BuildContext? context,
   }) async {
+    // Default notification title and body
+    String title = 'Update Available';
+    String body = 'Version $version is now available. Tap to update.';
+
+    // If context is available, use localized messages
+    if (context != null) {
+      title = MessageUtils.getUpdateAvailableTitle(context);
+      body = MessageUtils.getUpdateAvailableBody(context, version);
+    }
+
     final notification = NotificationModel(
       id: 'update_${DateTime.now().millisecondsSinceEpoch}',
-      title: 'تحديث جديد متاح',
-      body: 'الإصدار $version متاح الآن. انقر للتحديث.',
+      title: title,
+      body: body,
       timestamp: DateTime.now(),
       isRead: false,
       type: 'update',
@@ -235,7 +248,7 @@ class NotificationManager {
     await addNotification(notification);
   }
 
-  // معالجة النقر على إشعار
+  // Handle notification tap
   Future<void> handleNotificationTap(
       NotificationModel notification, BuildContext context) async {
     if (notification.type == 'update' && notification.data != null) {
@@ -243,7 +256,7 @@ class NotificationManager {
       final version = notification.data!['version'] as String;
       final releaseNotes = notification.data!['releaseNotes'] as String;
 
-      // عرض مربع حوار التحديث
+      // Show update dialog
       if (context.mounted) {
         final updateService = UpdateService();
         final updateInfo = UpdateInfo(
@@ -256,7 +269,7 @@ class NotificationManager {
         updateService.showUpdateDialog(context, updateInfo);
       }
     }
-    // تعليم الإشعار كمقروء
+    // Mark notification as read
     await markAsRead(notification.id);
   }
 }

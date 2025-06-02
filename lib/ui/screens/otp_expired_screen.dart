@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:road_helperr/ui/screens/otp_screen.dart';
 import 'package:road_helperr/ui/screens/signin_screen.dart';
 import 'package:road_helperr/utils/app_colors.dart';
@@ -126,10 +127,11 @@ class _OtpExpiredScreenState extends State<OtpExpiredScreen>
   }
 
   Widget _buildErrorMessage(ResponsiveHelper responsive, Color textMainColor) {
+    final lang = AppLocalizations.of(context);
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Text(
-        'The OTP has expired!',
+        lang?.otpExpired ?? 'The OTP has expired!',
         style: TextStyle(
           color: textMainColor,
           fontSize: responsive.titleSize,
@@ -159,7 +161,7 @@ class _OtpExpiredScreenState extends State<OtpExpiredScreen>
             Navigator.of(context).pushNamed(OtpScreen.routeName);
           },
           child: Text(
-            'Request OTP',
+            AppLocalizations.of(context)?.requestOtp ?? 'Request OTP',
             style: TextStyle(
               color: Colors.white,
               fontSize: responsive.buttonFontSize,
@@ -195,7 +197,7 @@ class _OtpExpiredScreenState extends State<OtpExpiredScreen>
             ),
           ),
           child: Text(
-            'Back to Login',
+            AppLocalizations.of(context)?.backToLogin ?? 'Back to Login',
             style: TextStyle(
               color: isLight
                   ? AppColors.getSignAndRegister(context)

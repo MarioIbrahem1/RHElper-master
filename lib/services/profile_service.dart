@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/profile_data.dart';
 import 'package:http_parser/http_parser.dart'; // لازم يكون موجود
 import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
+import '../services/api_service.dart';
 
 class LocationResult {
   final Position? position;
@@ -20,14 +23,27 @@ class ProfileService {
     'Content-Type': 'application/json',
   };
 
-  Future<ProfileData> getProfileData(String email) async {
+  Future<ProfileData> getProfileData(String email,
+      {bool useCache = true}) async {
     try {
-      print('=== GET PROFILE REQUEST ===');
-      print('URL: $baseUrl/data');
-      print('Method: POST');
-      print('Headers: $headers');
-      print('Body: ${jsonEncode({"email": email})}');
-      print('========================');
+      // Check if we have fresh cached data and should use it
+      if (useCache) {
+        final hasFreshCache = await ProfileData.hasFreshCachedData();
+        if (hasFreshCache) {
+          final cachedData = await ProfileData.loadFromCache();
+          if (cachedData != null && cachedData.email == email) {
+            debugPrint('Using cached profile data for $email');
+            return cachedData;
+          }
+        }
+      }
+
+      debugPrint('=== GET PROFILE REQUEST ===');
+      debugPrint('URL: $baseUrl/data');
+      debugPrint('Method: POST');
+      debugPrint('Headers: $headers');
+      debugPrint('Body: ${jsonEncode({"email": email})}');
+      debugPrint('========================');
 
       final response = await http.post(
         Uri.parse('$baseUrl/data'),
@@ -35,10 +51,10 @@ class ProfileService {
         body: jsonEncode({"email": email}),
       );
 
-      print('=== GET PROFILE RESPONSE ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('==========================');
+      debugPrint('=== GET PROFILE RESPONSE ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('==========================');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
@@ -53,7 +69,7 @@ class ProfileService {
               'اللون: ${carData['carColor']}\n'
               'رقم اللوحة: ${carData['letters']} ${carData['plateNumber']}';
 
-          return ProfileData(
+          final profileData = ProfileData(
             name: '${userData['firstName']} ${userData['lastName']}'.trim(),
             email: userData['email'],
             phone: userData['phone'],
@@ -62,17 +78,45 @@ class ProfileService {
             carColor: carData['carColor'],
             plateNumber: '${carData['letters']} ${carData['plateNumber']}',
           );
+
+          // Cache the profile data for future use
+          await profileData.saveToCache();
+
+          return profileData;
         }
       }
 
       throw Exception('Failed to load profile data');
     } catch (e) {
-      print('Error in getProfileData: $e');
+      debugPrint('Error in getProfileData: $e');
       throw Exception('Failed to load profile data: $e');
     }
   }
 
-  Future<void> updateProfileData(String email, ProfileData profileData) async {
+  Future<void> updateProfileData(String email, ProfileData profileData,
+      {File? profileImageFile}) async {
+    try {
+      // التحقق من نوع المستخدم (Google أم عادي)
+      final prefs = await SharedPreferences.getInstance();
+      final isGoogleSignIn = prefs.getBool('is_google_sign_in') ?? false;
+
+      if (isGoogleSignIn) {
+        // استخدام endpoint خاص بمستخدمين Google
+        await updateGoogleUserProfile(email, profileData,
+            profileImageFile: profileImageFile);
+      } else {
+        // استخدام endpoint العادي للمستخدمين العاديين
+        await updateRegularUserProfile(email, profileData);
+      }
+    } catch (e) {
+      debugPrint('Error in updateProfileData: $e');
+      throw Exception('Error updating profile data: $e');
+    }
+  }
+
+  // تحديث بيانات المستخدم العادي
+  Future<void> updateRegularUserProfile(
+      String email, ProfileData profileData) async {
     try {
       final Map<String, dynamic> requestData = {
         'email': email,
@@ -88,12 +132,12 @@ class ProfileService {
 
       final requestBody = json.encode(requestData);
 
-      print('=== UPDATE PROFILE REQUEST ===');
-      print('URL: $baseUrl/updateuser');
-      print('Method: PUT');
-      print('Headers: ${{'Content-Type': 'application/json'}}');
-      print('Body: $requestBody');
-      print('============================');
+      debugPrint('=== UPDATE REGULAR USER PROFILE REQUEST ===');
+      debugPrint('URL: $baseUrl/updateuser');
+      debugPrint('Method: PUT');
+      debugPrint('Headers: ${{'Content-Type': 'application/json'}}');
+      debugPrint('Body: $requestBody');
+      debugPrint('==========================================');
 
       final response = await http.put(
         Uri.parse('$baseUrl/updateuser'),
@@ -103,18 +147,64 @@ class ProfileService {
         body: requestBody,
       );
 
-      print('=== UPDATE PROFILE RESPONSE ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('==============================');
+      debugPrint('=== UPDATE REGULAR USER PROFILE RESPONSE ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('============================================');
 
       if (response.statusCode != 200) {
         throw Exception(
-            'Failed to update profile data: ${response.statusCode}');
+            'Failed to update regular user profile data: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error in updateProfileData: $e');
-      throw Exception('Error updating profile data: $e');
+      debugPrint('Error in updateRegularUserProfile: $e');
+      throw Exception('Error updating regular user profile data: $e');
+    }
+  }
+
+  // تحديث بيانات مستخدم Google
+  Future<void> updateGoogleUserProfile(String email, ProfileData profileData,
+      {File? profileImageFile}) async {
+    try {
+      // تحضير البيانات للإرسال
+      final Map<String, dynamic> requestData = {
+        'email': email,
+        'firstName': profileData.name.split(' ')[0],
+        'lastName': profileData.name.split(' ').length > 1
+            ? profileData.name.split(' ').sublist(1).join(' ')
+            : '',
+        'phone': profileData.phone,
+        'car_model': profileData.carModel,
+        'car_color': profileData.carColor,
+        'car_number': profileData.plateNumber,
+      };
+
+      // إضافة الصورة إذا كانت متوفرة
+      if (profileImageFile != null) {
+        requestData['profile_picture'] = profileImageFile;
+      }
+
+      debugPrint('=== UPDATE GOOGLE USER PROFILE REQUEST ===');
+      debugPrint('Email: $email');
+      debugPrint('Data: ${requestData.keys.toList()}');
+      debugPrint('Has profile image: ${profileImageFile != null}');
+      debugPrint('==========================================');
+
+      // استدعاء الدالة الجديدة من ApiService
+      final result = await ApiService.updateGoogleUser(requestData);
+
+      debugPrint('=== UPDATE GOOGLE USER PROFILE RESPONSE ===');
+      debugPrint('Success: ${result['success']}');
+      debugPrint('Message: ${result['message'] ?? result['error']}');
+      debugPrint('===========================================');
+
+      if (result['success'] != true) {
+        throw Exception(
+            result['error'] ?? 'Failed to update Google user profile');
+      }
+    } catch (e) {
+      debugPrint('Error in updateGoogleUserProfile: $e');
+      throw Exception('Error updating Google user profile: $e');
     }
   }
 
@@ -122,30 +212,30 @@ class ProfileService {
     try {
       // Validate email
       if (email.isEmpty) {
-        print('Error: Empty email provided to uploadProfileImage');
+        debugPrint('Error: Empty email provided to uploadProfileImage');
         return '';
       }
 
       email = email.trim(); // Trim any whitespace
 
-      print('=== UPLOAD IMAGE REQUEST ===');
-      print('URL: $baseUrl/upload');
-      print('Method: POST');
-      print('Email: $email');
+      debugPrint('=== UPLOAD IMAGE REQUEST ===');
+      debugPrint('URL: $baseUrl/upload');
+      debugPrint('Method: POST');
+      debugPrint('Email: $email');
 
       // Check if file exists and is readable
       if (!await imageFile.exists()) {
-        print('Error: Image file does not exist: ${imageFile.path}');
+        debugPrint('Error: Image file does not exist: ${imageFile.path}');
         return '';
       }
 
       // Check file size
       final fileSize = await imageFile.length();
-      print('File size: $fileSize bytes');
+      debugPrint('File size: $fileSize bytes');
 
       // If file is too large (> 5MB), warn about it
       if (fileSize > 5 * 1024 * 1024) {
-        print(
+        debugPrint(
             'Warning: File is large (${fileSize / (1024 * 1024)} MB), upload may take longer');
       }
 
@@ -169,46 +259,48 @@ class ProfileService {
       );
 
       // Print request details for debugging
-      print('Request fields: ${request.fields}');
-      print('Request files: ${request.files.map((f) => f.filename).toList()}');
+      debugPrint('Request fields: ${request.fields}');
+      debugPrint(
+          'Request files: ${request.files.map((f) => f.filename).toList()}');
 
       try {
         // Send the request with timeout
         final streamedResponse = await request.send().timeout(
           const Duration(seconds: 30),
           onTimeout: () {
-            print('Request timed out for uploadProfileImage');
+            debugPrint('Request timed out for uploadProfileImage');
             throw Exception('Request timed out');
           },
         );
 
         final response = await http.Response.fromStream(streamedResponse);
 
-        print('Upload response status code: ${response.statusCode}');
-        print('Upload response: ${response.body}');
+        debugPrint('Upload response status code: ${response.statusCode}');
+        debugPrint('Upload response: ${response.body}');
 
         if (response.statusCode != 200) {
-          print('Error: Non-200 status code: ${response.statusCode}');
+          debugPrint('Error: Non-200 status code: ${response.statusCode}');
           return '';
         }
 
         try {
           // Parse the response
           final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
-          print('Parsed JSON response: $jsonResponse');
+          debugPrint('Parsed JSON response: $jsonResponse');
 
           // Check if the response indicates success
           if (jsonResponse['status'] == 'success') {
-            print('Upload successful according to status');
+            debugPrint('Upload successful according to status');
 
             // Case 1: Server returns image_url directly
             if (jsonResponse['image_url'] != null) {
               String imageUrl = jsonResponse['image_url'];
-              print('Image uploaded. URL: $imageUrl');
+              debugPrint('Image uploaded. URL: $imageUrl');
 
               // Validate and fix URL format if needed
               if (!imageUrl.startsWith('http')) {
-                print('Warning: Image URL does not start with http: $imageUrl');
+                debugPrint(
+                    'Warning: Image URL does not start with http: $imageUrl');
 
                 // Try to fix the URL if it's a relative path
                 if (imageUrl.startsWith('/')) {
@@ -218,7 +310,7 @@ class ProfileService {
                   imageUrl = 'http://81.10.91.96:8132/$imageUrl';
                 }
 
-                print('Fixed image URL: $imageUrl');
+                debugPrint('Fixed image URL: $imageUrl');
               }
 
               // Add cache-busting parameter to avoid caching issues
@@ -230,7 +322,7 @@ class ProfileService {
                     '$imageUrl&t=${DateTime.now().millisecondsSinceEpoch}';
               }
 
-              print('Final image URL with cache busting: $imageUrl');
+              debugPrint('Final image URL with cache busting: $imageUrl');
               return imageUrl;
             }
             // Case 2: Server returns success message but no URL
@@ -239,73 +331,84 @@ class ProfileService {
                 jsonResponse['message']
                     .toString()
                     .contains('uploaded successfully')) {
-              print(
+              debugPrint(
                   'Server returned success message but no URL. Fetching image URL from API.');
 
               // Make a request to get the image URL
               final imageUrl = await getProfileImage(email);
 
               if (imageUrl.isNotEmpty) {
-                print('Retrieved image URL after upload: $imageUrl');
+                debugPrint('Retrieved image URL after upload: $imageUrl');
                 return imageUrl;
               } else {
-                print('Could not retrieve image URL after successful upload');
+                debugPrint(
+                    'Could not retrieve image URL after successful upload');
                 return '';
               }
             }
             // If we get here, the response was successful but we couldn't determine the URL
             else {
-              print('Upload successful but could not determine image URL');
-              print('Response body: ${response.body}');
+              debugPrint('Upload successful but could not determine image URL');
+              debugPrint('Response body: ${response.body}');
 
               // Try to get the image URL by making a request to the images endpoint
               final imageUrl = await getProfileImage(email);
 
               if (imageUrl.isNotEmpty) {
-                print('Retrieved image URL after upload: $imageUrl');
+                debugPrint('Retrieved image URL after upload: $imageUrl');
                 return imageUrl;
               } else {
-                print('Could not retrieve image URL after successful upload');
+                debugPrint(
+                    'Could not retrieve image URL after successful upload');
                 return '';
               }
             }
           } else {
-            print('Upload failed. Response status indicates failure.');
-            print('Response body: ${response.body}');
+            debugPrint('Upload failed. Response status indicates failure.');
+            debugPrint('Response body: ${response.body}');
             return '';
           }
         } catch (parseError) {
-          print('Error parsing JSON response: $parseError');
-          print('Raw response: ${response.body}');
+          debugPrint('Error parsing JSON response: $parseError');
+          debugPrint('Raw response: ${response.body}');
           return '';
         }
       } catch (httpError) {
-        print('HTTP error during upload: $httpError');
+        debugPrint('HTTP error during upload: $httpError');
         return '';
       }
     } catch (e) {
-      print('Error in uploadProfileImage: $e');
+      debugPrint('Error in uploadProfileImage: $e');
       return '';
     }
   }
 
-  Future<String> getProfileImage(String email) async {
+  Future<String> getProfileImage(String email, {bool useCache = true}) async {
     try {
+      // Check if we have a cached image URL first
+      if (useCache) {
+        final cachedImageUrl = await ProfileData.getCachedImageUrl();
+        if (cachedImageUrl != null && cachedImageUrl.isNotEmpty) {
+          debugPrint('Using cached profile image URL for $email');
+          return cachedImageUrl;
+        }
+      }
+
       // Validate email
       if (email.isEmpty) {
-        print('Error: Empty email provided to getProfileImage');
+        debugPrint('Error: Empty email provided to getProfileImage');
         return '';
       }
 
       email = email.trim(); // Trim any whitespace
 
       // Based on the Postman screenshot, we need to use GET method with email in the body
-      print('=== GET PROFILE IMAGE REQUEST ===');
-      print('URL: $baseUrl/images');
-      print('Method: GET');
-      print('Headers: $headers');
-      print('Body: ${jsonEncode({"email": email})}');
-      print('========================');
+      debugPrint('=== GET PROFILE IMAGE REQUEST ===');
+      debugPrint('URL: $baseUrl/images');
+      debugPrint('Method: GET');
+      debugPrint('Headers: $headers');
+      debugPrint('Body: ${jsonEncode({"email": email})}');
+      debugPrint('========================');
 
       // Create a GET request with a body (which is unusual but seems to be what the API expects)
       final request = http.Request('GET', Uri.parse('$baseUrl/images'));
@@ -315,17 +418,17 @@ class ProfileService {
       final streamedResponse = await request.send().timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          print('Request timed out for getProfileImage');
+          debugPrint('Request timed out for getProfileImage');
           throw Exception('Request timed out');
         },
       );
 
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('=== GET PROFILE IMAGE RESPONSE ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('==========================');
+      debugPrint('=== GET PROFILE IMAGE RESPONSE ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('==========================');
 
       if (response.statusCode == 200) {
         try {
@@ -335,41 +438,55 @@ class ProfileService {
               jsonResponse['images'] is List &&
               (jsonResponse['images'] as List).isNotEmpty) {
             final firstImage = jsonResponse['images'][0];
+            String? imageUrl;
 
             // Based on the Postman screenshot, the image URL is in the 'imageUrl' field
             if (firstImage is Map<String, dynamic> &&
                 firstImage.containsKey('imageUrl')) {
-              final imageUrl = firstImage['imageUrl'].toString();
-              print('Found image URL in imageUrl field: $imageUrl');
-              return imageUrl;
+              imageUrl = firstImage['imageUrl'].toString();
+              debugPrint('Found image URL in imageUrl field: $imageUrl');
             }
-
             // Also check for 'filepath' field as seen in the screenshot
-            if (firstImage is Map<String, dynamic> &&
+            else if (firstImage is Map<String, dynamic> &&
                 firstImage.containsKey('filepath')) {
               final filepath = firstImage['filepath'].toString();
-              print('Found filepath: $filepath');
-              return 'http://81.10.91.96:8132/$filepath';
+              debugPrint('Found filepath: $filepath');
+              imageUrl = 'http://81.10.91.96:8132/$filepath';
             }
-
             // Also check for 'filePath' field (camel case variation)
-            if (firstImage is Map<String, dynamic> &&
+            else if (firstImage is Map<String, dynamic> &&
                 firstImage.containsKey('filePath')) {
               final filepath = firstImage['filePath'].toString();
-              print('Found filePath: $filepath');
-              return 'http://81.10.91.96:8132/$filepath';
+              debugPrint('Found filePath: $filepath');
+              imageUrl = 'http://81.10.91.96:8132/$filepath';
+            }
+
+            if (imageUrl != null && imageUrl.isNotEmpty) {
+              // Cache the image URL for future use
+              // Create a ProfileData instance to save the image URL
+              final profileData = await ProfileData.loadFromCache();
+              if (profileData != null) {
+                profileData.profileImage = imageUrl;
+                await profileData.saveToCache();
+              } else {
+                // If no profile data exists, just save the image URL directly
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('cached_profile_image', imageUrl);
+              }
+
+              return imageUrl;
             }
           }
         } catch (e) {
-          print('Error parsing JSON response: $e');
+          debugPrint('Error parsing JSON response: $e');
         }
       }
 
       // If we couldn't get a URL from the API, return empty string
-      print('Could not get profile image URL');
+      debugPrint('Could not get profile image URL');
       return '';
     } catch (e) {
-      print('Error in getProfileImage: $e');
+      debugPrint('Error in getProfileImage: $e');
       return '';
     }
   }
@@ -410,8 +527,80 @@ class ProfileService {
           desiredAccuracy: LocationAccuracy.high);
       return LocationResult(position: position);
     } catch (e) {
-      print('Location error: $e');
+      debugPrint('Location error: $e');
       return LocationResult(error: 'حدث خطأ أثناء جلب الموقع: $e');
+    }
+  }
+
+  // استرجاع بيانات مستخدم Google
+  Future<ProfileData> getGoogleUserProfileData(String email,
+      {bool useCache = true}) async {
+    try {
+      // التحقق من وجود بيانات مخزنة مؤقتًا
+      if (useCache) {
+        final hasFreshCache = await ProfileData.hasFreshCachedData();
+        if (hasFreshCache) {
+          final cachedData = await ProfileData.loadFromCache();
+          if (cachedData != null && cachedData.email == email) {
+            debugPrint('Using cached Google user profile data for $email');
+            return cachedData;
+          }
+        }
+      }
+
+      debugPrint('=== GET GOOGLE USER PROFILE REQUEST ===');
+      debugPrint('URL: ${ApiService.baseUrl}/api/datagoogle');
+      debugPrint('Method: POST');
+      debugPrint('Body: ${jsonEncode({"email": email})}');
+      debugPrint('=======================================');
+
+      // استدعاء الدالة الجديدة من ApiService
+      final result = await ApiService.getGoogleUserData(email);
+
+      if (result['success'] == true && result['data'] != null) {
+        final userData = result['data']['user'];
+
+        // تنسيق بيانات السيارة بطريقة أكثر قراءة بالعربية
+        String carInfo = '';
+        String? carModel, carColor, plateNumber;
+
+        if (userData['car_model'] != null) {
+          carModel = userData['car_model'];
+          carInfo += 'السيارة: $carModel\n';
+        }
+
+        if (userData['car_color'] != null) {
+          carColor = userData['car_color'];
+          carInfo += 'اللون: $carColor\n';
+        }
+
+        if (userData['car_number'] != null) {
+          plateNumber = userData['car_number'];
+          carInfo += 'رقم اللوحة: $plateNumber';
+        }
+
+        final profileData = ProfileData(
+          name: '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'
+              .trim(),
+          email: userData['email'] ?? email,
+          phone: userData['phone'],
+          address: carInfo.isNotEmpty ? carInfo : null,
+          profileImage: userData['profile_picture'],
+          carModel: carModel,
+          carColor: carColor,
+          plateNumber: plateNumber,
+        );
+
+        // تخزين البيانات مؤقتًا للاستخدام المستقبلي
+        await profileData.saveToCache();
+
+        return profileData;
+      }
+
+      throw Exception('Failed to load Google user profile data');
+    } catch (e) {
+      debugPrint('Error in getGoogleUserProfileData: $e');
+      throw Exception('Failed to load Google user profile data: $e');
     }
   }
 }

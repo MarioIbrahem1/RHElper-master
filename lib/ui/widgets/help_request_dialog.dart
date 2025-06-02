@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:road_helperr/models/help_request.dart';
-import 'package:road_helperr/services/api_service.dart';
+import 'package:road_helperr/services/hybrid_help_request_service.dart';
 import 'package:road_helperr/services/notification_service.dart';
 import 'package:road_helperr/utils/app_colors.dart';
+import 'package:road_helperr/utils/message_utils.dart';
 
 class HelpRequestDialog extends StatefulWidget {
   final HelpRequest request;
@@ -35,9 +36,10 @@ class _HelpRequestDialogState extends State<HelpRequestDialog> {
     });
 
     try {
-      await ApiService.respondToHelpRequest(
+      await HybridHelpRequestService().respondToHelpRequest(
         requestId: widget.request.requestId,
         accept: accept,
+        estimatedArrival: accept ? '10-15 minutes' : null,
       );
 
       if (mounted) {
@@ -50,7 +52,7 @@ class _HelpRequestDialogState extends State<HelpRequestDialog> {
         });
         NotificationService.showError(
           context: context,
-          title: 'Error',
+          title: "Error",
           message: 'Failed to respond to help request: $e',
         );
       }
@@ -78,7 +80,8 @@ class _HelpRequestDialogState extends State<HelpRequestDialog> {
             _buildInfoRow('Car', widget.request.senderCarModel!),
           if (widget.request.senderCarColor != null)
             _buildInfoRow('Color', widget.request.senderCarColor!),
-          if (widget.request.message != null && widget.request.message!.isNotEmpty)
+          if (widget.request.message != null &&
+              widget.request.message!.isNotEmpty)
             _buildInfoRow('Message', widget.request.message!),
           const SizedBox(height: 8),
           Text(
@@ -97,7 +100,7 @@ class _HelpRequestDialogState extends State<HelpRequestDialog> {
           child: Text(
             'Decline',
             style: TextStyle(
-              color: Colors.red[700],
+              color: MessageUtils.getErrorColor(context),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -172,7 +175,8 @@ class _HelpRequestDialogState extends State<HelpRequestDialog> {
   }
 
   // Haversine formula to calculate distance between two points on Earth
-  double _haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _haversineDistance(
+      double lat1, double lon1, double lat2, double lon2) {
     const R = 6371.0; // Earth radius in kilometers
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
@@ -217,7 +221,9 @@ class _HelpRequestDialogState extends State<HelpRequestDialog> {
     if (x > 0) {
       return _atan(y / x);
     } else if (x < 0) {
-      return y >= 0 ? _atan(y / x) + 3.141592653589793 : _atan(y / x) - 3.141592653589793;
+      return y >= 0
+          ? _atan(y / x) + 3.141592653589793
+          : _atan(y / x) - 3.141592653589793;
     } else {
       return y > 0 ? 3.141592653589793 / 2 : -3.141592653589793 / 2;
     }

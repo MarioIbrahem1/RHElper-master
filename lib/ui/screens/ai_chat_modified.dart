@@ -924,11 +924,11 @@ class _AiChatState extends State<AiChat> {
       }
 
       // تحسين تنسيق الروابط في الرد إذا كانت موجودة
-      if (response != null && response.contains('](#')) {
+      if (response?.contains('](#') == true) {
         debugPrint('تم العثور على روابط في الرد');
       }
 
-      if (response == null || response.isEmpty) {
+      if (response?.isEmpty == true) {
         response =
             'عذراً، لم أتمكن من الحصول على إجابة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.';
       }
