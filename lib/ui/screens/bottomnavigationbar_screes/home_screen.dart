@@ -15,6 +15,7 @@ import 'package:road_helperr/services/places_service.dart';
 import 'package:road_helperr/ui/widgets/profile_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:road_helperr/services/hybrid_service_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,6 +49,19 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _getCurrentLocation();
     _getUserEmail(); // استدعاء دالة للحصول على البريد الإلكتروني للمستخدم
+    _ensureLocationTrackingStarted(); // التأكد من بدء تتبع الموقع
+  }
+
+  // التأكد من بدء تتبع الموقع للمستخدم المسجل
+  Future<void> _ensureLocationTrackingStarted() async {
+    try {
+      final hybridService = HybridServiceManager();
+      // التحقق من أن المستخدم مسجل دخول وبدء تتبع الموقع إذا لم يكن قد بدأ
+      await hybridService.ensureLocationTrackingStarted();
+      debugPrint('تم التأكد من بدء تتبع الموقع في HomeScreen');
+    } catch (e) {
+      debugPrint('خطأ في التأكد من تتبع الموقع: $e');
+    }
   }
 
   // دالة للحصول على البريد الإلكتروني للمستخدم من التخزين المحلي

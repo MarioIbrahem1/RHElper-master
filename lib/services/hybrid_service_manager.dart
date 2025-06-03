@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:road_helperr/services/hybrid_help_request_service.dart';
 import 'package:road_helperr/services/hybrid_user_location_service.dart';
 import 'package:road_helperr/services/hybrid_notification_service.dart';
+import 'package:road_helperr/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HybridServiceManager {
@@ -102,6 +103,25 @@ class HybridServiceManager {
       debugPrint('User logged out successfully');
     } catch (e) {
       debugPrint('Error on user logout: $e');
+    }
+  }
+
+  // التأكد من بدء تتبع الموقع للمستخدم المسجل
+  Future<void> ensureLocationTrackingStarted() async {
+    try {
+      // التحقق من أن المستخدم مسجل دخول
+      final authService = AuthService();
+      final isLoggedIn = await authService.isLoggedIn();
+
+      if (isLoggedIn) {
+        // بدء تتبع الموقع إذا لم يكن قد بدأ
+        _userLocationService.startLocationTracking();
+        debugPrint('Location tracking ensured for logged in user');
+      } else {
+        debugPrint('User not logged in, skipping location tracking');
+      }
+    } catch (e) {
+      debugPrint('Error ensuring location tracking: $e');
     }
   }
 

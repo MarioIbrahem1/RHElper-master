@@ -163,7 +163,7 @@ class MapController {
     }
   }
 
-  /// Fetch nearby users
+  /// Fetch nearby users (محسن للاستجابة السريعة)
   Future<void> _fetchNearbyUsers() async {
     try {
       debugPrint('Starting to fetch nearby users...');
@@ -178,21 +178,36 @@ class MapController {
       _currentLocation = LatLng(position.latitude, position.longitude);
       onLocationChanged(_currentLocation);
 
-      // Reduce radius to 1000 meters (1 km) for testing
-      const double searchRadius = 1000; // 1 km radius for testing nearby users
+      // Increase radius to 10000 meters (10 km) for better user discovery
+      const double searchRadius = 10000; // 10 km radius for nearby users
 
       debugPrint('Fetching users within $searchRadius meters radius');
 
-      // استخدام الخدمة الهجينة للحصول على المستخدمين القريبين
+      // استخدام الخدمة الهجينة للحصول على المستخدمين القريبين (Real-time)
       final nearbyUsersStream = HybridUserLocationService().listenToNearbyUsers(
         LatLng(position.latitude, position.longitude),
         searchRadius / 1000, // تحويل إلى كيلومتر
       );
 
-      // الحصول على أول نتيجة من الـ stream
-      List<UserLocation> nearbyUsers = await nearbyUsersStream.first;
+      // الاستماع للـ stream بشكل مستمر بدلاً من أخذ أول نتيجة فقط
+      nearbyUsersStream.listen((List<UserLocation> nearbyUsers) {
+        _processNearbyUsers(nearbyUsers);
+      }, onError: (error) {
+        debugPrint('Error in nearby users stream: $error');
+      });
 
-      debugPrint('Found ${nearbyUsers.length} nearby users');
+      // أيضاً احصل على أول نتيجة للعرض الفوري
+      List<UserLocation> nearbyUsers = await nearbyUsersStream.first;
+      _processNearbyUsers(nearbyUsers);
+    } catch (e) {
+      debugPrint('Error fetching nearby users: $e');
+    }
+  }
+
+  /// معالجة المستخدمين القريبين وإنشاء العلامات
+  void _processNearbyUsers(List<UserLocation> nearbyUsers) async {
+    try {
+      debugPrint('Processing ${nearbyUsers.length} nearby users');
 
       // Create car markers for each user
       Set<Marker> userMarkers = {};
@@ -279,7 +294,7 @@ class MapController {
       _userMarkers = userMarkers;
       _updateMarkers();
     } catch (e) {
-      debugPrint('Error fetching nearby users: $e');
+      debugPrint('Error processing nearby users: $e');
     }
   }
 

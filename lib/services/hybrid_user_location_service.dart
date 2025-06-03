@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:road_helperr/models/user_location.dart';
 import 'package:road_helperr/services/api_service.dart';
+import 'package:road_helperr/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math' as math;
@@ -51,23 +52,27 @@ class HybridUserLocationService {
       };
     }
 
-    // ثانياً: تحقق من SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('user_id');
-    final userName = prefs.getString('user_name');
-    final userEmail = prefs.getString('user_email');
-    final userPhone = prefs.getString('user_phone');
+    // ثانياً: تحقق من SharedPreferences باستخدام AuthService
+    final authService = AuthService();
+    final isLoggedIn = await authService.isLoggedIn();
 
-    if (userId != null && userId.isNotEmpty) {
-      return {
-        'userId': userId,
-        'name': userName ?? 'Unknown User',
-        'email': userEmail ?? '',
-        'phone': userPhone,
-        'isFirebaseUser': false,
-      };
+    if (isLoggedIn) {
+      final userId = await authService.getUserId();
+      final userName = await authService.getUserName();
+      final userEmail = await authService.getUserEmail();
+
+      if (userId != null && userId.isNotEmpty) {
+        debugPrint('Found authenticated user: $userEmail (ID: $userId)');
+        return {
+          'userId': userId,
+          'name': userName ?? 'Unknown User',
+          'email': userEmail ?? '',
+          'isFirebaseUser': false,
+        };
+      }
     }
 
+    debugPrint('No authenticated user found');
     return null;
   }
 
@@ -158,22 +163,25 @@ class HybridUserLocationService {
     }
   }
 
-  // الاستماع للمستخدمين القريبين (هجين - يجمع من Firebase و REST API)
+  // الاستماع للمستخدمين القريبين (هجين - Real-time مع تحديث سريع)
   Stream<List<UserLocation>> listenToNearbyUsers(
       LatLng currentLocation, double radiusKm) {
-    return Stream.periodic(const Duration(seconds: 30)).asyncMap((_) async {
+    // استخدام Firebase real-time listener مع fallback للـ API
+    return _database.child('users').onValue.asyncMap((event) async {
       try {
         final List<UserLocation> allUsers = [];
 
-        // 1. جلب المستخدمين من Firebase
-        final firebaseUsers =
-            await _getNearbyUsersFromFirebase(currentLocation, radiusKm);
+        // 1. جلب المستخدمين من Firebase (Real-time)
+        final firebaseUsers = await _getNearbyUsersFromFirebaseRealtime(
+            event, currentLocation, radiusKm);
         allUsers.addAll(firebaseUsers);
 
-        // 2. جلب المستخدمين من REST API
-        final apiUsers =
-            await _getNearbyUsersFromAPI(currentLocation, radiusKm);
-        allUsers.addAll(apiUsers);
+        // 2. جلب المستخدمين من REST API (كل 30 ثانية فقط)
+        if (DateTime.now().second % 30 == 0) {
+          final apiUsers =
+              await _getNearbyUsersFromAPI(currentLocation, radiusKm);
+          allUsers.addAll(apiUsers);
+        }
 
         // 3. إزالة المستخدمين المكررين
         final uniqueUsers = _removeDuplicateUsers(allUsers);
@@ -185,6 +193,7 @@ class HybridUserLocationService {
           return distanceA.compareTo(distanceB);
         });
 
+        debugPrint('Real-time users found: ${uniqueUsers.length}');
         return uniqueUsers;
       } catch (e) {
         debugPrint('Error getting nearby users: $e');
@@ -193,16 +202,14 @@ class HybridUserLocationService {
     });
   }
 
-  // جلب المستخدمين القريبين من Firebase
-  Future<List<UserLocation>> _getNearbyUsersFromFirebase(
-      LatLng currentLocation, double radiusKm) async {
+  // جلب المستخدمين من Firebase بشكل Real-time
+  Future<List<UserLocation>> _getNearbyUsersFromFirebaseRealtime(
+      DatabaseEvent event, LatLng currentLocation, double radiusKm) async {
     try {
       final currentUserId = await _getCurrentUserId();
 
-      final snapshot = await _database.child('users').get();
-      if (!snapshot.exists) return [];
-
-      final data = snapshot.value as Map<dynamic, dynamic>;
+      if (!event.snapshot.exists) return [];
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
 
       return data.entries
           .where((entry) {
@@ -220,13 +227,13 @@ class HybridUserLocationService {
 
             if (!isOnline || !isAvailable) return false;
 
-            // التحقق من أن الموقع محدث حديثاً (خلال آخر 10 دقائق)
+            // تقليل وقت انتهاء الصلاحية إلى 5 دقائق بدلاً من 10
             final lastUpdated = userData['location']['updatedAt'];
             if (lastUpdated != null) {
               final lastUpdateTime = DateTime.parse(lastUpdated);
               final now = DateTime.now();
               final difference = now.difference(lastUpdateTime).inMinutes;
-              if (difference > 10) return false; // أكثر من 10 دقائق
+              if (difference > 5) return false; // تقليل إلى 5 دقائق
             }
 
             return true;
@@ -239,7 +246,7 @@ class HybridUserLocationService {
           })
           .toList();
     } catch (e) {
-      debugPrint('Error getting Firebase users: $e');
+      debugPrint('Error getting Firebase real-time users: $e');
       return [];
     }
   }
@@ -366,21 +373,41 @@ class HybridUserLocationService {
     return earthRadius * c;
   }
 
-  // بدء تتبع الموقع التلقائي
+  // بدء تتبع الموقع التلقائي (محسن للاستجابة السريعة)
   void startLocationTracking() {
     _locationUpdateTimer?.cancel();
+    _positionSubscription?.cancel();
 
-    // تحديث الموقع كل دقيقة
+    // تحديث الموقع كل 30 ثانية بدلاً من دقيقة كاملة
     _locationUpdateTimer =
-        Timer.periodic(const Duration(minutes: 1), (timer) async {
+        Timer.periodic(const Duration(seconds: 30), (timer) async {
       try {
         final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
         );
 
         await updateUserLocation(LatLng(position.latitude, position.longitude));
+        debugPrint(
+            'Location updated: ${position.latitude}, ${position.longitude}');
       } catch (e) {
         debugPrint('Error in automatic location update: $e');
+      }
+    });
+
+    // إضافة listener للحركة الفورية (عند تغيير الموقع بشكل كبير)
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 50, // تحديث عند الحركة 50 متر
+        timeLimit: Duration(seconds: 10),
+      ),
+    ).listen((Position position) async {
+      try {
+        await updateUserLocation(LatLng(position.latitude, position.longitude));
+        debugPrint(
+            'Real-time location update: ${position.latitude}, ${position.longitude}');
+      } catch (e) {
+        debugPrint('Error in real-time location update: $e');
       }
     });
   }

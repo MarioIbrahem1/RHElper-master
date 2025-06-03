@@ -10,6 +10,7 @@ import 'package:road_helperr/services/notification_service.dart';
 import 'package:road_helperr/utils/app_colors.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:road_helperr/services/google_auth_service.dart';
+import 'package:road_helperr/services/hybrid_service_manager.dart';
 
 class SignInScreen extends StatefulWidget {
   static const String routeName = "signinscreen";
@@ -301,6 +302,22 @@ class _SignInScreenState extends State<SignInScreen> {
                                           await authService.isLoggedIn();
                                       debugPrint(
                                           'التحقق بعد الحفظ - حالة تسجيل الدخول: $isLoggedIn');
+
+                                      // بدء تتبع الموقع بعد تسجيل الدخول
+                                      try {
+                                        final hybridService =
+                                            HybridServiceManager();
+                                        await hybridService.onUserLogin(
+                                          userId: response['user_id'] ?? '',
+                                          name: response['name'] ?? '',
+                                          email: emailController.text,
+                                          isFirebaseUser: false,
+                                        );
+                                        debugPrint('تم بدء تتبع الموقع بنجاح');
+                                      } catch (locationError) {
+                                        debugPrint(
+                                            'خطأ في بدء تتبع الموقع: $locationError');
+                                      }
                                     }
 
                                     // Show success message before navigation
@@ -359,6 +376,28 @@ class _SignInScreenState extends State<SignInScreen> {
                                       await SharedPreferences.getInstance();
                                   await prefs.setString('logged_in_email',
                                       userData['email'].toString());
+
+                                  // بدء تتبع الموقع لمستخدمي Google
+                                  try {
+                                    final hybridService =
+                                        HybridServiceManager();
+                                    await hybridService.onUserLogin(
+                                      userId: userData['uid'] ?? '',
+                                      name:
+                                          '${userData['firstName']} ${userData['lastName']}'
+                                              .trim(),
+                                      email: userData['email'].toString(),
+                                      phone: userData['phone']?.toString(),
+                                      profileImageUrl:
+                                          userData['photoURL']?.toString(),
+                                      isFirebaseUser: true,
+                                    );
+                                    debugPrint(
+                                        'تم بدء تتبع الموقع لمستخدم Google بنجاح');
+                                  } catch (locationError) {
+                                    debugPrint(
+                                        'خطأ في بدء تتبع الموقع لمستخدم Google: $locationError');
+                                  }
 
                                   // توجيه المستخدم مباشرة إلى الشاشة الرئيسية عند تسجيل الدخول
                                   if (mounted) {
